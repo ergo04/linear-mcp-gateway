@@ -292,9 +292,7 @@ linear-mcp-gateway/
 │           ├── env.ts             # Env var parser & auth
 │           ├── proxy-handler.ts   # MCP protocol, workspace routing, custom tools
 │           ├── upstream-mcp.ts    # Client for Linear's own MCP (SSE, tool cache)
-│           ├── linear.ts          # Linear SDK wrapper — backs the custom tools
-│           └── mcp-handler.ts     # RETIRED: the old hand-written 52-tool surface,
-│                                  # no longer served. Safe to delete.
+│           └── linear.ts          # Linear SDK wrapper — backs the custom tools
 ├── packages/
 │   ├── ui/                        # Shared UI components (shadcn/ui)
 │   └── typescript-config/
