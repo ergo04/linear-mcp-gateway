@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint"
+    "lint": "oxlint --type-aware ."
   },
   "dependencies": {
     "@linear/sdk": "^90.0.0",
@@ -21,9 +21,7 @@
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
-    "eslint": "^10.8.1",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   }
 }
