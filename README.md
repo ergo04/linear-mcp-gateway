@@ -274,7 +274,10 @@ Then, for example:
 
 ## Adding users and workspaces
 
-**New team member** — add a `USER_N_*` block to `.env.local` (or Vercel env vars) and redeploy:
+**New team member** — add a `USER_N_*` block to `apps/gateway/.env.local` (or the
+gateway's Vercel env vars) and redeploy. Numbering must run 1, 2, 3… with no gaps:
+authentication stops at the first missing block, so a `USER_3` without a `USER_2` is never
+matched. The status page flags this.
 
 ```env
 USER_3_NAME="Elena"
@@ -292,19 +295,16 @@ WS_GAMMA_LINEAR_KEY="lin_api_..."
 USER_1_WORKSPACES="acme,beta,gamma"
 ```
 
-Workspace IDs (used in tool calls) are derived from the env var slug:
-- `WS_ACME_*` → `"acme"`
-- `WS_BETA_PROJECT_*` → `"beta-project"`
+The workspace ID used in tool calls is the part between `WS_` and `_NAME` / `_LINEAR_KEY`,
+lowercased with underscores turned into hyphens:
 
-## Workspace key naming rules
+| Env var prefix   | `workspace` value |
+| ---------------- | ----------------- |
+| `WS_ACME`        | `acme`            |
+| `WS_MY_STARTUP`  | `my-startup`      |
 
-| Env var prefix | Workspace ID in tools |
-|----------------|----------------------|
-| `WS_ACME` | `acme` |
-| `WS_BETA` | `beta` |
-| `WS_MY_STARTUP` | `my-startup` |
-
-The slug is derived by lowercasing the part between `WS_` and `_NAME`/`_LINEAR_KEY`, replacing `_` with `-`.
+A slug listed in `USER_N_WORKSPACES` with no matching `WS_*` block is dropped silently —
+the user simply never sees that workspace. The status page reports it as a warning.
 
 ## Security notes
 
@@ -312,6 +312,11 @@ The slug is derived by lowercasing the part between `WS_` and `_NAME`/`_LINEAR_K
 - Each user only sees workspaces explicitly listed in their `USER_N_WORKSPACES`
 - Linear API keys are never exposed to the client
 - All authentication happens server-side on every request
+- The status page at `/` is **unauthenticated**, so it names nothing: counts and failure
+  kinds only, never a member name, a workspace slug or an env var. Names appear only for a
+  caller presenting a configured token. It is served `noindex`
+- Deployment URLs are not a secret. The bearer token is what protects the endpoint — an
+  obscure URL only reduces drive-by scanning
 - There is no rate limiting built in — add it at the Vercel/reverse-proxy level if needed
 
 ## Project structure
@@ -330,12 +335,14 @@ linear-mcp-gateway/
 │   │   │   ├── env.ts              # Env var parser, auth, config introspection
 │   │   │   ├── proxy-handler.ts    # MCP protocol, workspace routing, custom tools
 │   │   │   ├── upstream-mcp.ts     # Client for Linear's own MCP (SSE, tool cache)
+│   │   │   ├── mcp-headers.ts      # Base64 sentinel encoding for mirrored headers
 │   │   │   ├── status.ts           # Config checks for the status page
 │   │   │   └── linear.ts           # Linear SDK wrapper — backs the custom tools
 │   │   └── .env.example
 │   └── web/                        # this documentation site (port 3022, no env vars)
 ├── packages/
 │   ├── ui/                         # Shared UI components (shadcn/ui)
+│   ├── eslint-config/
 │   └── typescript-config/
 └── README.md
 ```
