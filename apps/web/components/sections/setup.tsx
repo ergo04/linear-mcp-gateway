@@ -75,7 +75,10 @@ WS_ACME_NAME="Acme Corp"
 WS_ACME_LINEAR_KEY="lin_api_..."
 
 WS_BETA_NAME="Beta Project"
-WS_BETA_LINEAR_KEY="lin_api_..."`}</CodeBlock>
+WS_BETA_LINEAR_KEY="lin_api_..."
+
+# Only for Claude's connector UI — see below
+OAUTH_SIGNING_SECRET="another_secure_token"`}</CodeBlock>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Then <code className="font-mono text-xs">pnpm dev</code> and open{" "}
               <code className="font-mono text-xs">localhost:3023</code> for the
@@ -90,8 +93,7 @@ WS_BETA_LINEAR_KEY="lin_api_..."`}</CodeBlock>
               It is a plain Streamable HTTP MCP server, so any client that can
               call an HTTP endpoint with an{" "}
               <code className="font-mono text-xs">Authorization</code> header
-              works. You need the URL and your token — nothing else. Two
-              examples:
+              works. You need the URL and your token — nothing else:
             </p>
             <CodeBlock label="Claude Code">{`claude mcp add linear --transport http \\
   https://your-deployment.vercel.app/api/mcp \\
@@ -101,6 +103,26 @@ WS_BETA_LINEAR_KEY="lin_api_..."`}</CodeBlock>
 [mcp_servers.linear]
 url = "https://your-deployment.vercel.app/api/mcp"
 bearer_token_env_var = "LINEAR_GATEWAY_TOKEN"`}</CodeBlock>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Claude Desktop, claude.ai and mobile are the exception: their
+              connector form has no field for a header, only for OAuth
+              credentials. So the gateway serves the OAuth flow itself, and the
+              client secret is the same token you would have put in the header.
+              Paste it under <strong>Advanced settings</strong>, approve on the
+              consent screen, done.
+            </p>
+            <CodeBlock label="Claude — Add custom connector">{`Remote MCP server URL   https://your-deployment.vercel.app/api/mcp
+OAuth Client ID         anything, e.g. claude-desktop
+OAuth Client Secret     tok_your_secure_token`}</CodeBlock>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              That path needs{" "}
+              <code className="font-mono text-xs">OAUTH_SIGNING_SECRET</code>{" "}
+              set — it is what signs the codes and tokens, none of which are
+              stored. Leave it out and the OAuth surface stays off entirely, on
+              purpose: an authorization server that cannot sign is worse than
+              none, since the client then fails halfway through a flow instead
+              of never starting one.
+            </p>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Clients that only speak stdio can bridge with{" "}
               <code className="font-mono text-xs">mcp-remote</code>. Every tool
