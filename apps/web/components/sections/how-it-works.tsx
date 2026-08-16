@@ -14,7 +14,7 @@ const steps = [
   {
     number: "03",
     title: "Connect your AI client",
-    description: "Add the MCP server to Claude Desktop, Claude Code, or Cursor using mcp-remote and your Bearer token.",
+    description: "Point Claude Code, Claude Desktop, or Cursor at the endpoint with your Bearer token — native HTTP where the client supports it, mcp-remote otherwise.",
   },
 ]
 

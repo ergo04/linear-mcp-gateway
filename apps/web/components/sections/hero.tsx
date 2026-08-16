@@ -11,19 +11,21 @@ export function HeroSection() {
           <div className="flex flex-wrap gap-2">
             <TechBadge>Next.js 16</TechBadge>
             <TechBadge>MCP HTTP</TechBadge>
-            <TechBadge>@linear/sdk</TechBadge>
+            <TechBadge>proxies Linear&apos;s MCP</TechBadge>
             <TechBadge>no database</TechBadge>
           </div>
 
           <h1 className="max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">
-            Use Linear from Claude —{" "}
-            <span className="text-muted-foreground">across multiple workspaces.</span>
+            All of Linear from Claude —{" "}
+            <span className="text-muted-foreground">across every workspace at once.</span>
           </h1>
 
           <p className="max-w-xl text-base text-muted-foreground leading-relaxed">
-            A self-hosted MCP gateway that lets your team query and manage Linear issues
-            directly from Claude. Zero database, zero OAuth — just environment variables
-            and a single API endpoint.
+            Linear&apos;s own MCP server is excellent, but one credential means one
+            workspace. This gateway routes to it and adds a{" "}
+            <code className="font-mono text-sm">workspace</code> argument, so a single
+            connection reaches all of them — and every tool Linear ships arrives here for
+            free. Zero database, zero OAuth: environment variables and one endpoint.
           </p>
 
           <div className="flex flex-wrap gap-3 pt-2">

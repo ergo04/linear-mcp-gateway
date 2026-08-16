@@ -1,20 +1,30 @@
-import { Lock, Server, Zap } from "lucide-react"
+import { Lock, Route, Server, Wrench, Zap } from "lucide-react"
 
 const cards = [
   {
-    icon: Lock,
-    title: "Token-based auth",
-    body: "Each team member gets a secret Bearer token. The gateway validates it on every request — no sessions, no cookies.",
+    icon: Route,
+    title: "Routes, doesn't reimplement",
+    body: "The tool surface comes from Linear's hosted MCP, re-exported with a workspace argument. Features Linear ships show up here without a code change.",
   },
   {
     icon: Server,
     title: "Multi-workspace",
-    body: "Each Linear workspace has its own API key. Users see only the workspaces they're configured to access.",
+    body: "One Linear API key per workspace, picked per call. Users only see the workspaces their token is configured for.",
+  },
+  {
+    icon: Wrench,
+    title: "Gaps filled locally",
+    body: "11 custom tools cover what Linear's MCP lacks — deleting and reordering milestones, archiving, initiative links — and shadow upstream names when it catches up.",
+  },
+  {
+    icon: Lock,
+    title: "Token-based auth",
+    body: "Each team member gets a secret Bearer token, validated on every request. No sessions, no cookies, no OAuth dance.",
   },
   {
     icon: Zap,
     title: "Serverless-ready",
-    body: "Stateless HTTP transport. Deploy on Vercel, Fly.io, or any Node.js host. No persistent connections required.",
+    body: "Stateless throughout: Linear's MCP needs no handshake and no session id, so every request stands alone. Deploy on Vercel or any Node.js host.",
   },
 ]
 

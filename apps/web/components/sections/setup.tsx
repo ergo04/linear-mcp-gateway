@@ -69,12 +69,19 @@ WS_BETA_LINEAR_KEY="lin_api_..."`}</CodeBlock>
             <StepHeader number={3} title="Run locally and test the endpoint" />
             <div className="flex flex-col gap-3 pl-10">
               <CodeBlock label="terminal">pnpm dev</CodeBlock>
-              <p className="text-sm text-muted-foreground">Then send a test request:</p>
-              <CodeBlock label="terminal">{`curl -s -X POST http://localhost:3000/api/mcp \\
+              <p className="text-sm text-muted-foreground">
+                The dev server listens on port <strong>3022</strong>. Then send a test
+                request:
+              </p>
+              <CodeBlock label="terminal">{`curl -s -X POST http://localhost:3022/api/mcp \\
   -H "Authorization: Bearer tok_your_secure_token_here" \\
   -H "Content-Type: application/json" \\
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \\
-  | jq .`}</CodeBlock>
+  | jq '.result.tools | length'`}</CodeBlock>
+              <p className="text-sm text-muted-foreground">
+                Expect ~74: the 11 custom tools plus whatever Linear exposes for your
+                workspaces.
+              </p>
             </div>
           </div>
 
@@ -83,13 +90,20 @@ WS_BETA_LINEAR_KEY="lin_api_..."`}</CodeBlock>
             <StepHeader number={4} title="Deploy to Vercel" />
             <div className="flex flex-col gap-3 pl-10">
               <p className="text-sm text-muted-foreground">
-                Push to GitHub and import in Vercel. Set your env vars in{" "}
-                <strong>Project → Settings → Environment Variables</strong>.
-                The monorepo root directory is{" "}
-                <code className="font-mono text-xs">apps/web</code>.
+                Push to GitHub and import in Vercel, then set{" "}
+                <strong>Settings → Build → Root Directory</strong> to{" "}
+                <code className="font-mono text-xs">apps/web</code>. This is required: it
+                is how Vercel finds Next.js while still installing the pnpm workspace from
+                the repo root. Add your env vars under{" "}
+                <strong>Settings → Environment Variables</strong> for both Production and
+                Preview.
               </p>
-              <CodeBlock label="terminal">{`# Or deploy instantly with Vercel CLI
-pnpm dlx vercel --cwd apps/web`}</CodeBlock>
+              <CodeBlock label="terminal">{`# Or from the CLI — link and deploy from the repo ROOT,
+# never from apps/web: deploying that directory alone
+# uploads no workspace packages and the install fails.
+vercel link
+vercel env add WS_ACME_LINEAR_KEY production
+vercel deploy --prod`}</CodeBlock>
             </div>
           </div>
 
@@ -133,19 +147,19 @@ pnpm dlx vercel --cwd apps/web`}</CodeBlock>
   --header "Authorization: Bearer tok_your_secure_token_here"`}</CodeBlock>
                 <p className="text-sm text-muted-foreground">
                   Or add it manually to{" "}
-                  <code className="font-mono text-xs">~/.claude.json</code> (global) /{" "}
-                  <code className="font-mono text-xs">.claude/settings.json</code> (project):
+                  <code className="font-mono text-xs">~/.claude.json</code> (global) or{" "}
+                  <code className="font-mono text-xs">.mcp.json</code> in the project root.
+                  Claude Code speaks HTTP natively, so no{" "}
+                  <code className="font-mono text-xs">mcp-remote</code> wrapper is needed:
                 </p>
                 <CodeBlock label="~/.claude.json">{`{
   "mcpServers": {
     "linear": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://your-app.vercel.app/api/mcp",
-        "--header",
-        "Authorization: Bearer tok_your_secure_token_here"
-      ]
+      "type": "http",
+      "url": "https://your-app.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer tok_your_secure_token_here"
+      }
     }
   }
 }`}</CodeBlock>
@@ -182,6 +196,44 @@ pnpm dlx vercel --cwd apps/web`}</CodeBlock>
                 </p>
               </div>
 
+            </div>
+          </div>
+
+          {/* Step 6 */}
+          <div className="flex flex-col gap-4">
+            <StepHeader number={6} title="Calling the tools" />
+            <div className="flex flex-col gap-3 pl-10">
+              <p className="text-sm text-muted-foreground">
+                Every tool takes a <code className="font-mono text-xs">workspace</code>{" "}
+                argument — the slug from your{" "}
+                <code className="font-mono text-xs">WS_*</code> env vars. Start with{" "}
+                <code className="font-mono text-xs">list_workspaces</code> to see the
+                valid values.
+              </p>
+              <CodeBlock label="tools/call">{`{
+  "name": "list_issues",
+  "arguments": { "workspace": "acme", "limit": 10 }
+}`}</CodeBlock>
+              <p className="text-sm text-muted-foreground">
+                Two things that are easy to miss. Blocking relations are hidden unless you
+                ask for them, and they are written through{" "}
+                <code className="font-mono text-xs">save_issue</code>:
+              </p>
+              <CodeBlock label="blockers">{`# read them
+{ "name": "get_issue",
+  "arguments": { "workspace": "acme", "id": "ACM-12",
+                 "includeRelations": true } }
+
+# write them
+{ "name": "save_issue",
+  "arguments": { "workspace": "acme", "id": "ACM-12",
+                 "blocks": ["ACM-13"] } }`}</CodeBlock>
+              <p className="text-sm text-muted-foreground">
+                And Linear gates some tools on the workspace plan, so the tool list is not
+                identical for every workspace. The gateway exposes the union and each
+                tool&apos;s <code className="font-mono text-xs">workspace</code> enum lists
+                only the workspaces that actually support it.
+              </p>
             </div>
           </div>
         </div>
