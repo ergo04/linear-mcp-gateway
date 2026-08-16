@@ -19,6 +19,7 @@ import {
   TOOL_CACHE_TTL_MS,
   type UpstreamTool,
 } from "@/lib/upstream-mcp"
+import { decodeHeaderValue } from "@/lib/mcp-headers"
 
 const WORKSPACE_PARAM = "workspace"
 
@@ -501,41 +502,105 @@ async function executeTool(
 // JSON-RPC dispatch
 // --------------------------------------------------------------------------
 
+export interface HandlerOutcome {
+  /** HTTP status the transport must answer with. */
+  status: number
+  /** Null for notifications, which get 202 and no body. */
+  body: JsonRpcResponse | null
+}
+
+/**
+ * Headers that mirror body fields are only validated when present. Requests
+ * that omit them are accepted because this server also serves legacy clients,
+ * which the spec explicitly permits — but a header that contradicts the body is
+ * rejected: an intermediary may route or rate-limit on the header while this
+ * server executes the body, and those must not disagree.
+ */
+function headerMismatch(
+  headers: Headers,
+  method: string,
+  params: unknown
+): string | null {
+  const declared = declaredVersion(params)
+  const versionHeader = headers.get("mcp-protocol-version")
+  if (versionHeader && declared && versionHeader !== declared) {
+    return `MCP-Protocol-Version header value '${versionHeader}' does not match body value '${declared}'`
+  }
+
+  const methodHeader = headers.get("mcp-method")
+  if (methodHeader && methodHeader !== method) {
+    return `Mcp-Method header value '${methodHeader}' does not match body value '${method}'`
+  }
+
+  const nameHeader = headers.get("mcp-name")
+  if (nameHeader && method === "tools/call") {
+    const bodyName = (params as { name?: unknown } | undefined)?.name
+    const decoded = decodeHeaderValue(nameHeader)
+    if (typeof bodyName === "string" && decoded !== bodyName) {
+      return `Mcp-Name header value '${decoded}' does not match body value '${bodyName}'`
+    }
+  }
+
+  return null
+}
+
 export async function handleProxyRequest(
   user: AuthenticatedUser,
-  body: unknown
-): Promise<JsonRpcResponse | null> {
+  body: unknown,
+  headers: Headers = new Headers()
+): Promise<HandlerOutcome> {
   const req = body as { id?: string | number; method?: string; params?: unknown }
   const id = req.id ?? 0
 
   if (!req.method) {
-    return { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request" } }
+    return {
+      status: 400,
+      body: { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request" } },
+    }
   }
 
-  if (req.method.startsWith("notifications/")) return null
+  if (req.method.startsWith("notifications/")) return { status: 202, body: null }
+
+  const mismatch = headerMismatch(headers, req.method, req.params)
+  if (mismatch) {
+    return {
+      status: 400,
+      body: {
+        jsonrpc: "2.0",
+        id,
+        error: { code: -32020, message: `Header mismatch: ${mismatch}` },
+      },
+    }
+  }
 
   // A modern client states its version on every request; reject the ones this
   // server does not implement so the client can retry with a supported one.
   const requested = declaredVersion(req.params)
   if (requested && !SUPPORTED_VERSIONS.includes(requested)) {
     return {
-      jsonrpc: "2.0",
-      id,
-      error: {
-        code: -32022,
-        message: "Unsupported protocol version",
-        data: { supported: SUPPORTED_VERSIONS, requested },
+      status: 400,
+      body: {
+        jsonrpc: "2.0",
+        id,
+        error: {
+          code: -32022,
+          message: "Unsupported protocol version",
+          data: { supported: SUPPORTED_VERSIONS, requested },
+        },
       },
     }
   }
 
+  const ok = (result: unknown): HandlerOutcome => ({
+    status: 200,
+    body: { jsonrpc: "2.0", id, result },
+  })
+
   try {
     switch (req.method) {
       case "server/discover":
-        return {
-          jsonrpc: "2.0",
-          id,
-          result: withServerInfo({
+        return ok(
+          withServerInfo({
             resultType: "complete",
             supportedVersions: SUPPORTED_VERSIONS,
             capabilities: { tools: {} },
@@ -544,8 +609,8 @@ export async function handleProxyRequest(
             // unlike tools/list, so this one is safe for shared caches.
             ttlMs: 60 * 60 * 1000,
             cacheScope: "public",
-          }),
-        }
+          })
+        )
 
       case "initialize": {
         // Legacy handshake: answer with the requested version when it is one we
@@ -553,26 +618,20 @@ export async function handleProxyRequest(
         // handshake at all — 2026-07-28 has none, so it can never go here.
         const asked = (req.params as { protocolVersion?: string } | undefined)
           ?.protocolVersion
-        return {
-          jsonrpc: "2.0",
-          id,
-          result: {
-            protocolVersion: asked === LEGACY_VERSION ? asked : LEGACY_VERSION,
-            capabilities: { tools: { listChanged: false } },
-            serverInfo: SERVER_INFO,
-            instructions: INSTRUCTIONS,
-          },
-        }
+        return ok({
+          protocolVersion: asked === LEGACY_VERSION ? asked : LEGACY_VERSION,
+          capabilities: { tools: { listChanged: false } },
+          serverInfo: SERVER_INFO,
+          instructions: INSTRUCTIONS,
+        })
       }
 
       case "ping":
-        return { jsonrpc: "2.0", id, result: {} }
+        return ok({})
 
       case "tools/list":
-        return {
-          jsonrpc: "2.0",
-          id,
-          result: withServerInfo({
+        return ok(
+          withServerInfo({
             resultType: "complete",
             tools: await listTools(user),
             // Same hint the upstream tool cache uses, so a client refetching
@@ -581,33 +640,46 @@ export async function handleProxyRequest(
             // MUST stay private: which tools exist depends on the caller's
             // token, so a shared cache would serve one user's list to another.
             cacheScope: "private",
-          }),
-        }
+          })
+        )
 
       case "tools/call": {
         const params = req.params as { name?: string; arguments?: unknown } | undefined
         if (!params?.name) {
-          return { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } }
+          return {
+            status: 400,
+            body: {
+              jsonrpc: "2.0",
+              id,
+              error: { code: -32602, message: "Missing tool name" },
+            },
+          }
         }
-        return {
-          jsonrpc: "2.0",
-          id,
-          result: withServerInfo({
+        return ok(
+          withServerInfo({
             resultType: "complete",
             ...(await executeTool(user, params.name, params.arguments)),
-          }),
-        }
+          })
+        )
       }
 
       default:
+        // 404, not 200: it lets a client distinguish an unimplemented method
+        // from a transport that isn't an MCP endpoint at all.
         return {
-          jsonrpc: "2.0",
-          id,
-          error: { code: -32601, message: `Method not found: ${req.method}` },
+          status: 404,
+          body: {
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32601, message: `Method not found: ${req.method}` },
+          },
         }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    return { jsonrpc: "2.0", id, error: { code: -32603, message } }
+    return {
+      status: 500,
+      body: { jsonrpc: "2.0", id, error: { code: -32603, message } },
+    }
   }
 }

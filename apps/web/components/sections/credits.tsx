@@ -12,7 +12,7 @@ export function CreditsSection() {
 
         <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
           Built by <strong className="text-foreground">Simone Ergotino</strong> — because
-          working across three Linear workspaces from Claude should not take three
+          working across three Linear workspaces from an AI client should not take three
           connections. Open source under the MIT license: fork it, host it, change it.
         </p>
 

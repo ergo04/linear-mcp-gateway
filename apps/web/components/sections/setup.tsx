@@ -81,12 +81,22 @@ WS_BETA_LINEAR_KEY="lin_api_..."`}</CodeBlock>
 
           {/* Connect */}
           <div className="flex flex-col gap-4">
-            <h3 className="font-medium">Connecting Claude</h3>
-            <CodeBlock label="terminal">{`claude mcp add linear --transport http \\
+            <h3 className="font-medium">Connecting a client</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              It is a plain Streamable HTTP MCP server, so any client that can call an HTTP
+              endpoint with an <code className="font-mono text-xs">Authorization</code>{" "}
+              header works. You need the URL and your token — nothing else. Two examples:
+            </p>
+            <CodeBlock label="Claude Code">{`claude mcp add linear --transport http \\
   https://your-deployment.vercel.app/api/mcp \\
   --header "Authorization: Bearer tok_your_secure_token"`}</CodeBlock>
+            <CodeBlock label="Codex CLI — ~/.codex/config.toml">{`experimental_use_rmcp_client = true
+
+[mcp_servers.linear]
+url = "https://your-deployment.vercel.app/api/mcp"
+bearer_token_env_var = "LINEAR_GATEWAY_TOKEN"`}</CodeBlock>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Claude Desktop and Cursor use the same URL through{" "}
+              Clients that only speak stdio can bridge with{" "}
               <code className="font-mono text-xs">mcp-remote</code>. Every tool takes a{" "}
               <code className="font-mono text-xs">workspace</code> argument — start with{" "}
               <code className="font-mono text-xs">list_workspaces</code>. The full tool list

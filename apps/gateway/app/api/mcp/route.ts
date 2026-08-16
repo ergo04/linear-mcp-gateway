@@ -9,7 +9,7 @@
  * tools in proxy-handler.ts for what Linear's MCP does not implement.
  *
  * Each POST request is stateless — perfect for serverless deployments.
- * Claude Desktop connects via `mcp-remote` which proxies stdio → HTTP.
+ * Clients that only speak stdio connect via `mcp-remote`, which bridges stdio → HTTP.
  */
 
 import { type NextRequest, NextResponse } from "next/server"
@@ -61,14 +61,17 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- Dispatch ------------------------------------------------------------
-  const response = await handleProxyRequest(user, body)
+  // The status matters to the protocol, not just to HTTP: a client probing which
+  // MCP revision this server speaks decides from the status plus the error body.
+  const { status, body: response } = await handleProxyRequest(user, body, req.headers)
 
-  // Notifications return null — no response body needed
+  // Notifications return null — acknowledged with no body
   if (response === null) {
-    return new NextResponse(null, { status: 202 })
+    return new NextResponse(null, { status })
   }
 
   return NextResponse.json(response, {
+    status,
     headers: { "Content-Type": "application/json" },
   })
 }

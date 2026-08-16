@@ -98,8 +98,14 @@ export default async function StatusPage() {
         <section style={{ marginTop: 40 }}>
           <h2 style={{ fontSize: 16 }}>Connect a client</h2>
           <p style={{ color: "var(--muted)", fontSize: 14 }}>
-            Use this deployment&apos;s URL with the token you set in{" "}
-            <code>USER_1_TOKEN</code>. In Claude Code:
+            Streamable HTTP MCP endpoint — any client that can send an{" "}
+            <code>Authorization</code> header works. You need this deployment&apos;s URL and
+            the token from <code>USER_1_TOKEN</code>:
+          </p>
+          <pre>{`https://<this-deployment>/api/mcp
+Authorization: Bearer <USER_1_TOKEN>`}</pre>
+          <p style={{ color: "var(--muted)", fontSize: 14 }}>
+            For example, with Claude Code:
           </p>
           <pre>{`claude mcp add linear --transport http \\
   https://<this-deployment>/api/mcp \\

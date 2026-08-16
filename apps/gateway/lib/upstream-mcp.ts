@@ -6,6 +6,8 @@
  * That is what makes proxying viable from a serverless function.
  */
 
+import { encodeHeaderValue } from "@/lib/mcp-headers"
+
 const UPSTREAM_URL = "https://mcp.linear.app/mcp"
 
 export interface UpstreamTool {
@@ -47,19 +49,40 @@ function parseUpstreamBody(contentType: string, body: string): UpstreamResponse 
   return answer
 }
 
+/**
+ * The version spoken upstream. Linear's MCP reports `2025-06-18`, and that
+ * revision is where `MCP-Protocol-Version` was introduced — so the header is
+ * understood there. Claiming `2026-07-28` instead would be rejected outright by
+ * a server that does not implement it.
+ */
+const UPSTREAM_PROTOCOL_VERSION = "2025-06-18"
+
 async function request(
   apiKey: string,
   method: string,
   params?: unknown,
   id: string | number = 1
 ): Promise<unknown> {
+  // Mcp-Method / Mcp-Name are required of clients from 2026-07-28 onwards so
+  // that intermediaries can route without parsing the body. They are harmless
+  // extra headers for an older server, and they stop the proxy from breaking
+  // the day Linear starts enforcing them. Values must mirror the body exactly.
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+    Accept: "application/json, text/event-stream",
+    "MCP-Protocol-Version": UPSTREAM_PROTOCOL_VERSION,
+    "Mcp-Method": method,
+  }
+
+  const name = (params as { name?: unknown } | undefined)?.name
+  if (method === "tools/call" && typeof name === "string") {
+    headers["Mcp-Name"] = encodeHeaderValue(name)
+  }
+
   const res = await fetch(UPSTREAM_URL, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      Accept: "application/json, text/event-stream",
-    },
+    headers,
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
   })
 

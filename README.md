@@ -1,13 +1,15 @@
 # linear-mcp-gateway
 
-A self-hosted MCP (Model Context Protocol) server built with Next.js that gives Claude access to **several Linear workspaces over a single connection** — no database, no OAuth flow.
+A self-hosted MCP (Model Context Protocol) server built with Next.js that gives any MCP
+client — Claude Code, Codex, Cursor, your own agent — access to **several Linear
+workspaces over a single connection**, with no database and no OAuth flow.
 
 Linear ships its own excellent MCP server, but one credential means one workspace: covering three workspaces means registering it three times, which some clients (claude.ai connectors) refuse because the URL would be identical. This gateway solves exactly that. It **routes to Linear's official MCP** rather than reimplementing it, so new Linear features show up here for free.
 
 ## How it works
 
 ```
-Claude Desktop / Code / Cursor
+Any MCP client (Claude Code, Codex, Cursor, …)
      │  stdio (mcp-remote) or native HTTP
      │  Authorization: Bearer <your gateway token>
   /api/mcp  (Next.js App Router)
@@ -41,6 +43,20 @@ The server is **dual-era**: it implements MCP `2026-07-28`, which dropped the
   tools to another.
 - Results carry `resultType: "complete"`; the tool list is sorted, which the spec asks
   for so clients can cache it and prompt caches keep hitting.
+
+Requests may mirror body fields into `Mcp-Method`, `Mcp-Name` and `MCP-Protocol-Version`
+headers. Omitting them is fine — this server also serves legacy clients, which the spec
+permits — but a header that **contradicts** the body is rejected with `HeaderMismatch`
+(`-32020`). That is not pedantry: an intermediary may route or rate-limit on the header
+while the server executes the body, and the two disagreeing is a way to smuggle a call
+past it. Base64-sentinel values (`=?base64?…?=`) are decoded before comparison.
+
+Calls to Linear carry the same headers, declaring `2025-06-18` — the version Linear
+reports — so the proxy keeps working when Linear starts enforcing them.
+
+Status codes follow the transport: `400` for header and version errors, `404` with
+`-32601` for an unimplemented method, `202` for notifications. A client probing which
+revision the server speaks reads the status together with the error body.
 
 ## MCP tools
 
@@ -187,45 +203,32 @@ vercel deploy --prod
 > `apps/gateway` uploads that directory alone, and the `workspace:*` dependencies then
 > fail to install.
 
-### 5. Connect Claude Desktop
+### 5. Connect an MCP client
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+The gateway is a plain **Streamable HTTP** MCP server. Any client that can reach an HTTP
+endpoint and send an `Authorization` header works — there is nothing product-specific in
+it. You need two things: the URL `https://your-deployment/api/mcp` and the token from
+`USER_N_TOKEN`.
 
-```json
-{
-  "mcpServers": {
-    "linear": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://your-app.vercel.app/api/mcp",
-        "--header",
-        "Authorization: Bearer tok_abc123"
-      ]
-    }
-  }
-}
-```
-
-Restart Claude Desktop. The Linear tools will appear in the tool panel.
-
-> For local development, replace the URL with `http://localhost:3023/api/mcp`.
-
-### 6. Connect Claude Code
-
-**Option A — CLI (recommended):**
+Clients that only speak stdio can bridge with
+[`mcp-remote`](https://www.npmjs.com/package/mcp-remote):
 
 ```bash
-claude mcp add linear \
-  --transport http \
+npx mcp-remote https://your-app.vercel.app/api/mcp \
+  --header "Authorization: Bearer tok_abc123"
+```
+
+Two concrete examples follow. The pattern is the same everywhere: URL plus bearer token.
+
+**Claude Code** — native HTTP, no bridge needed:
+
+```bash
+claude mcp add linear --transport http \
   https://your-app.vercel.app/api/mcp \
   --header "Authorization: Bearer tok_abc123"
 ```
 
-**Option B — config file:**
-
-Add to `~/.claude.json` for global access, or `.mcp.json` in the project root for a
-single project. Claude Code speaks HTTP natively, so no `mcp-remote` wrapper is needed:
+or in `~/.claude.json` (global) / `.mcp.json` (project root):
 
 ```json
 {
@@ -233,45 +236,41 @@ single project. Claude Code speaks HTTP natively, so no `mcp-remote` wrapper is 
     "linear": {
       "type": "http",
       "url": "https://your-app.vercel.app/api/mcp",
-      "headers": {
-        "Authorization": "Bearer tok_abc123"
-      }
+      "headers": { "Authorization": "Bearer tok_abc123" }
     }
   }
 }
 ```
 
-Verify the server is loaded:
+**Codex CLI** — in `~/.codex/config.toml`. Remote HTTP servers currently sit behind an
+experimental flag, so check it is still needed for your version:
 
-```bash
-claude mcp list
+```toml
+experimental_use_rmcp_client = true
+
+[mcp_servers.linear]
+url = "https://your-app.vercel.app/api/mcp"
+bearer_token_env_var = "LINEAR_GATEWAY_TOKEN"
 ```
 
-> For local development, replace the URL with `http://localhost:3023/api/mcp`.
+`bearer_token_env_var` points at an environment variable rather than holding the token in
+the file — preferable for something that often ends up in a dotfiles repo.
 
-### 7. Connect Cursor
+For local development, replace the URL with `http://localhost:3023/api/mcp`.
 
-Edit `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
+### 6. First calls
+
+Every tool takes a `workspace` argument, so start by discovering the valid values:
 
 ```json
-{
-  "mcpServers": {
-    "linear": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://your-app.vercel.app/api/mcp",
-        "--header",
-        "Authorization: Bearer tok_abc123"
-      ]
-    }
-  }
-}
+{ "name": "list_workspaces", "arguments": {} }
 ```
 
-Restart Cursor (or run **Reload Window**). The Linear tools will be available in the Composer agent panel.
+Then, for example:
 
-> For local development, replace the URL with `http://localhost:3023/api/mcp`.
+```json
+{ "name": "list_issues", "arguments": { "workspace": "acme", "limit": 10 } }
+```
 
 ## Adding users and workspaces
 
