@@ -64,37 +64,37 @@ Every tool takes a **`workspace`** argument (`egix`, `acme`, … — call `list_
 
 ### Custom tools (11) — gaps in Linear's own MCP
 
-| Tool | Why it exists |
-|------|---------------|
-| `list_workspaces` | Router-level: lists the workspaces this token can reach |
-| `delete_milestone` | Linear's MCP cannot delete milestones at all |
-| `reorder_milestone` | Its `save_milestone` has no `sortOrder` parameter |
-| `assign_issues_to_milestone` | Batch (up to 50) instead of one issue at a time |
-| `archive_project` / `unarchive_project` | Linear's MCP cannot archive |
-| `archive_initiative` / `unarchive_initiative` | Same |
-| `list_initiative_projects` | Exposes initiative↔project links, and the link IDs |
-| `link_project_to_initiative` / `unlink_project_from_initiative` | Creating and removing those links |
+| Tool                                                            | Why it exists                                           |
+| --------------------------------------------------------------- | ------------------------------------------------------- |
+| `list_workspaces`                                               | Router-level: lists the workspaces this token can reach |
+| `delete_milestone`                                              | Linear's MCP cannot delete milestones at all            |
+| `reorder_milestone`                                             | Its `save_milestone` has no `sortOrder` parameter       |
+| `assign_issues_to_milestone`                                    | Batch (up to 50) instead of one issue at a time         |
+| `archive_project` / `unarchive_project`                         | Linear's MCP cannot archive                             |
+| `archive_initiative` / `unarchive_initiative`                   | Same                                                    |
+| `list_initiative_projects`                                      | Exposes initiative↔project links, and the link IDs      |
+| `link_project_to_initiative` / `unlink_project_from_initiative` | Creating and removing those links                       |
 
 A custom tool shadows an upstream tool of the same name, so a gap can be filled — and later dropped when Linear implements it — without touching the rest.
 
 ### Proxied from Linear (63)
 
-| Area | Tools |
-|------|-------|
-| Issues & comments | `list_issues`, `get_issue`, `save_issue`, `list_comments`, `save_comment`, `delete_comment`, `list_issue_statuses`, `get_issue_status`, `list_issue_labels`, `create_issue_label` |
-| Projects & milestones | `list_projects`, `get_project`, `save_project`, `list_project_labels`, `list_milestones`, `get_milestone`, `save_milestone` |
-| Initiatives | `list_initiatives`, `get_initiative`, `save_initiative`, `list_initiative_labels`, `create_initiative_label` |
-| Status updates | `get_status_updates`, `save_status_update`, `delete_status_update` |
+| Area                    | Tools                                                                                                                                                                                                                 |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Issues & comments       | `list_issues`, `get_issue`, `save_issue`, `list_comments`, `save_comment`, `delete_comment`, `list_issue_statuses`, `get_issue_status`, `list_issue_labels`, `create_issue_label`                                     |
+| Projects & milestones   | `list_projects`, `get_project`, `save_project`, `list_project_labels`, `list_milestones`, `get_milestone`, `save_milestone`                                                                                           |
+| Initiatives             | `list_initiatives`, `get_initiative`, `save_initiative`, `list_initiative_labels`, `create_initiative_label`                                                                                                          |
+| Status updates          | `get_status_updates`, `save_status_update`, `delete_status_update`                                                                                                                                                    |
 | Documents & attachments | `list_documents`, `get_document`, `save_document`, `get_attachment`, `create_attachment`, `prepare_attachment_upload`, `create_attachment_from_upload`, `delete_attachment`, `extract_images`, `search_documentation` |
-| Code review | `list_diffs`, `get_diff`, `get_diff_threads`, `save_diff_comment`, `delete_diff_comment`, `resolve_diff_thread`, `submit_diff_review`, `merge_diff` |
-| Releases | `list_release_pipelines`, `list_releases`, `get_release`, `save_release`, `list_release_notes`, `get_release_note`, `save_release_note` |
-| Customers | `list_customers`, `save_customer`, `delete_customer`, `save_customer_need`, `delete_customer_need` |
-| Workspace | `list_teams`, `get_team`, `list_users`, `get_user`, `get_workspace`, `list_cycles`, `list_agent_skills`, `get_agent_skill` |
+| Code review             | `list_diffs`, `get_diff`, `get_diff_threads`, `save_diff_comment`, `delete_diff_comment`, `resolve_diff_thread`, `submit_diff_review`, `merge_diff`                                                                   |
+| Releases                | `list_release_pipelines`, `list_releases`, `get_release`, `save_release`, `list_release_notes`, `get_release_note`, `save_release_note`                                                                               |
+| Customers               | `list_customers`, `save_customer`, `delete_customer`, `save_customer_need`, `delete_customer_need`                                                                                                                    |
+| Workspace               | `list_teams`, `get_team`, `list_users`, `get_user`, `get_workspace`, `list_cycles`, `list_agent_skills`, `get_agent_skill`                                                                                            |
 
 Two behaviours worth knowing, both discovered the hard way:
 
-- **`get_issue` hides relations by default.** Pass `includeRelations: true` to see blocking / blocked-by / related / duplicate links (`includeReleases` and `includeCustomerNeeds` work the same way). Relations are *written* through `save_issue` with `blocks`, `blockedBy`, `relatedTo`, `duplicateOf` and the matching `remove*` fields.
-- **The upstream tool list differs per workspace.** Linear gates some tools on the workspace's plan — the five `customer*` tools are absent on lower plans. The gateway exposes the *union* across your workspaces and narrows each tool's `workspace` enum to the ones that actually support it, noting the restriction in the tool description.
+- **`get_issue` hides relations by default.** Pass `includeRelations: true` to see blocking / blocked-by / related / duplicate links (`includeReleases` and `includeCustomerNeeds` work the same way). Relations are _written_ through `save_issue` with `blocks`, `blockedBy`, `relatedTo`, `duplicateOf` and the matching `remove*` fields.
+- **The upstream tool list differs per workspace.** Linear gates some tools on the workspace's plan — the five `customer*` tools are absent on lower plans. The gateway exposes the _union_ across your workspaces and narrows each tool's `workspace` enum to the ones that actually support it, noting the restriction in the tool description.
 
 ## Quick start
 
@@ -298,10 +298,10 @@ USER_1_WORKSPACES="acme,beta,gamma"
 The workspace ID used in tool calls is the part between `WS_` and `_NAME` / `_LINEAR_KEY`,
 lowercased with underscores turned into hyphens:
 
-| Env var prefix   | `workspace` value |
-| ---------------- | ----------------- |
-| `WS_ACME`        | `acme`            |
-| `WS_MY_STARTUP`  | `my-startup`      |
+| Env var prefix  | `workspace` value |
+| --------------- | ----------------- |
+| `WS_ACME`       | `acme`            |
+| `WS_MY_STARTUP` | `my-startup`      |
 
 A slug listed in `USER_N_WORKSPACES` with no matching `WS_*` block is dropped silently —
 the user simply never sees that workspace. The status page reports it as a warning.
@@ -342,7 +342,6 @@ linear-mcp-gateway/
 │   └── web/                        # this documentation site (port 3022, no env vars)
 ├── packages/
 │   ├── ui/                         # Shared UI components (shadcn/ui)
-│   ├── eslint-config/
 │   └── typescript-config/
 └── README.md
 ```
@@ -350,12 +349,35 @@ linear-mcp-gateway/
 `apps/gateway` deliberately has no UI dependencies — no Tailwind, no component library —
 so a fresh deploy builds fast and has little to break.
 
+## Toolchain
+
+```bash
+pnpm lint          # oxlint, including type-aware rules
+pnpm format        # Prettier, writes
+pnpm format:check  # Prettier, verifies — for CI
+pnpm typecheck     # tsc (TypeScript 7's native compiler)
+```
+
+**oxlint instead of ESLint.** ESLint could not be kept: `eslint-plugin-react` supports
+ESLint 9.7 at most and crashes on 10, and `typescript-eslint` accepts
+`typescript@<6.1.0`, which pins the whole workspace to TypeScript 6. oxlint runs its
+type-aware rules through `tsgolint`, which embeds tsgo — so it needs no TypeScript
+programmatic API, and TypeScript 7 works. Rules live in `.oxlintrc.json`; see
+`.oxlintrc.notes.md` for the one rule deliberately left off.
+
+**Prettier keeps formatting**, with `@prettier/plugin-oxc` swapping in OXC's Rust parser.
+Verified to produce byte-identical output, and `prettier-plugin-tailwindcss` still sorts
+classes — it must stay last in the `plugins` array. oxfmt is not used yet: it is in beta,
+and a formatter bug shows up as churn across every file.
+
 ## Stack
 
 - [Next.js 16](https://nextjs.org) — App Router, serverless API routes
 - [Linear's MCP server](https://linear.app/docs/mcp) — the proxied tool surface, authenticated with a personal API key per workspace
 - [@linear/sdk](https://github.com/linear/linear) — official Linear GraphQL client, backing the custom tools
 - [Zod](https://zod.dev) — tool argument validation
+- [oxlint](https://oxc.rs) + [Prettier](https://prettier.io) — linting and formatting, kept
+  as separate jobs: oxlint never touches formatting, Prettier never enforces rules
 - [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS v4](https://tailwindcss.com) — the documentation site only
 - [pnpm](https://pnpm.io) + [Turborepo](https://turbo.build) — monorepo tooling
 
