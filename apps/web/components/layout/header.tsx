@@ -2,6 +2,8 @@ import { GitBranch } from "lucide-react"
 import Link from "next/link"
 import { buttonVariants } from "@workspace/ui/components/button"
 import { cn } from "@workspace/ui/lib/utils"
+import { VercelLogo } from "@/components/ui/vercel-logo"
+import { DEPLOY_URL, REPO_URL } from "@/lib/deploy-url"
 
 export function Header() {
   return (
@@ -13,7 +15,7 @@ export function Header() {
         </div>
         <nav className="flex items-center gap-2">
           <Link
-            href="https://github.com/ergo04/linear-mcp-gateway"
+            href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
             className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
@@ -21,11 +23,12 @@ export function Header() {
             GitHub
           </Link>
           <Link
-            href="https://vercel.com/new/clone?repository-url=https://github.com/ergo04/linear-mcp-gateway"
+            href={DEPLOY_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className={cn(buttonVariants({ size: "sm" }))}
+            className={cn(buttonVariants({ size: "sm" }), "gap-1.5")}
           >
+            <VercelLogo className="size-3" />
             Deploy
           </Link>
         </nav>

@@ -6,37 +6,36 @@ import { TechBadge } from "@/components/ui/tech-badge"
 export function HeroSection() {
   return (
     <section className="border-b border-border/60">
-      <div className="mx-auto max-w-5xl px-6 py-24">
+      <div className="mx-auto max-w-3xl px-6 py-24">
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap gap-2">
-            <TechBadge>Next.js 16</TechBadge>
-            <TechBadge>MCP HTTP</TechBadge>
+            <TechBadge>self-hosted</TechBadge>
             <TechBadge>proxies Linear&apos;s MCP</TechBadge>
             <TechBadge>no database</TechBadge>
           </div>
 
-          <h1 className="max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">
+          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
             All of Linear from Claude —{" "}
-            <span className="text-muted-foreground">across every workspace at once.</span>
+            <span className="text-muted-foreground">every workspace, one connection.</span>
           </h1>
 
-          <p className="max-w-xl text-base text-muted-foreground leading-relaxed">
-            Linear&apos;s own MCP server is excellent, but one credential means one
-            workspace. This gateway routes to it and adds a{" "}
-            <code className="font-mono text-sm">workspace</code> argument, so a single
-            connection reaches all of them — and every tool Linear ships arrives here for
-            free. Zero database, zero OAuth: environment variables and one endpoint.
+          <p className="text-base text-muted-foreground leading-relaxed">
+            A small gateway you host yourself. It routes to Linear&apos;s own MCP server and
+            adds a <code className="font-mono text-sm">workspace</code> argument to every
+            tool, so a single connection reaches all of your workspaces.
           </p>
 
           <div className="flex flex-wrap gap-3 pt-2">
             <Link href="#setup" className={cn(buttonVariants({ size: "lg" }))}>
-              Get started
+              Set it up
             </Link>
             <Link
-              href="#tools"
+              href="https://github.com/ergo04/linear-mcp-gateway"
+              target="_blank"
+              rel="noopener noreferrer"
               className={cn(buttonVariants({ size: "lg", variant: "outline" }))}
             >
-              See all tools
+              Source on GitHub
             </Link>
           </div>
         </div>

@@ -75,10 +75,10 @@ pnpm install
 ### 2. Configure environment variables
 
 ```bash
-cp .env.example apps/web/.env.local
+cp apps/gateway/.env.example apps/gateway/.env.local
 ```
 
-Edit `apps/web/.env.local`:
+Edit `apps/gateway/.env.local`:
 
 ```env
 # Team members — add one block per person
@@ -110,12 +110,16 @@ openssl rand -base64 32
 pnpm dev
 ```
 
-The dev server listens on **port 3022**.
+Two apps come up: the **gateway** on port **3023** (`/api/mcp` plus a status page at
+`/`) and this documentation **site** on port 3022. Only the gateway reads the env vars.
+
+Open <http://localhost:3023> — the status page lists what is still missing and turns
+green once every Linear key answers.
 
 **Test the endpoint:**
 
 ```bash
-curl -s -X POST http://localhost:3022/api/mcp \
+curl -s -X POST http://localhost:3023/api/mcp \
   -H "Authorization: Bearer tok_abc123" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
@@ -126,7 +130,7 @@ Expect 74 — 11 custom plus whatever Linear exposes for your workspaces (63 on 
 
 ```bash
 # Test a tool call
-curl -s -X POST http://localhost:3022/api/mcp \
+curl -s -X POST http://localhost:3023/api/mcp \
   -H "Authorization: Bearer tok_abc123" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_workspaces","arguments":{}}}' \
@@ -137,17 +141,22 @@ curl -s -X POST http://localhost:3022/api/mcp \
 
 **Option A — one-click:**
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ergo04/linear-mcp-gateway)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fergo04%2Flinear-mcp-gateway&root-directory=apps%2Fgateway&project-name=linear-mcp-gateway&repository-name=linear-mcp-gateway&env=USER_1_NAME,USER_1_TOKEN,USER_1_WORKSPACES,WS_MAIN_NAME,WS_MAIN_LINEAR_KEY)
 
-Set your env vars under **Project → Settings → Environment Variables**.
+The `root-directory=apps/gateway` parameter is what matters: it deploys the gateway
+rather than this documentation site, and the clone flow asks for the environment
+variables up front. Afterwards, open the deployment to see the status page.
 
 **Option B — CLI:**
 
 ```bash
-pnpm dlx vercel --cwd apps/web
+vercel link                     # from the repo ROOT, not from apps/gateway
+vercel deploy --prod
 ```
 
-> The project root for Vercel is `apps/web`. Vercel auto-detects Next.js there.
+> Set the project's **Root Directory** to `apps/gateway`. Deploying from inside
+> `apps/gateway` uploads that directory alone, and the `workspace:*` dependencies then
+> fail to install.
 
 ### 5. Connect Claude Desktop
 
@@ -171,7 +180,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 Restart Claude Desktop. The Linear tools will appear in the tool panel.
 
-> For local development, replace the URL with `http://localhost:3022/api/mcp`.
+> For local development, replace the URL with `http://localhost:3023/api/mcp`.
 
 ### 6. Connect Claude Code
 
@@ -186,19 +195,18 @@ claude mcp add linear \
 
 **Option B — config file:**
 
-Add to `~/.claude.json` for global access, or `.claude/settings.json` for a single project:
+Add to `~/.claude.json` for global access, or `.mcp.json` in the project root for a
+single project. Claude Code speaks HTTP natively, so no `mcp-remote` wrapper is needed:
 
 ```json
 {
   "mcpServers": {
     "linear": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://your-app.vercel.app/api/mcp",
-        "--header",
-        "Authorization: Bearer tok_abc123"
-      ]
+      "type": "http",
+      "url": "https://your-app.vercel.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer tok_abc123"
+      }
     }
   }
 }
@@ -210,7 +218,7 @@ Verify the server is loaded:
 claude mcp list
 ```
 
-> For local development, replace the URL with `http://localhost:3022/api/mcp`.
+> For local development, replace the URL with `http://localhost:3023/api/mcp`.
 
 ### 7. Connect Cursor
 
@@ -234,7 +242,7 @@ Edit `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
 
 Restart Cursor (or run **Reload Window**). The Linear tools will be available in the Composer agent panel.
 
-> For local development, replace the URL with `http://localhost:3022/api/mcp`.
+> For local development, replace the URL with `http://localhost:3023/api/mcp`.
 
 ## Adding users and workspaces
 
@@ -280,25 +288,32 @@ The slug is derived by lowercasing the part between `WS_` and `_NAME`/`_LINEAR_K
 
 ## Project structure
 
+Two apps, deployed separately. Only `apps/gateway` is worth deploying yourself — the
+Deploy Button targets it, so nobody ends up hosting a copy of the documentation site.
+
 ```
 linear-mcp-gateway/
 ├── apps/
-│   └── web/
-│       ├── app/
-│       │   ├── api/mcp/route.ts   # MCP HTTP endpoint
-│       │   ├── layout.tsx
-│       │   └── page.tsx           # Landing page
-│       └── lib/
-│           ├── env.ts             # Env var parser & auth
-│           ├── proxy-handler.ts   # MCP protocol, workspace routing, custom tools
-│           ├── upstream-mcp.ts    # Client for Linear's own MCP (SSE, tool cache)
-│           └── linear.ts          # Linear SDK wrapper — backs the custom tools
+│   ├── gateway/                    # ← what you deploy (port 3023)
+│   │   ├── app/
+│   │   │   ├── api/mcp/route.ts    # MCP HTTP endpoint
+│   │   │   └── page.tsx            # Status page: what's missing, green when ready
+│   │   ├── lib/
+│   │   │   ├── env.ts              # Env var parser, auth, config introspection
+│   │   │   ├── proxy-handler.ts    # MCP protocol, workspace routing, custom tools
+│   │   │   ├── upstream-mcp.ts     # Client for Linear's own MCP (SSE, tool cache)
+│   │   │   ├── status.ts           # Config checks for the status page
+│   │   │   └── linear.ts           # Linear SDK wrapper — backs the custom tools
+│   │   └── .env.example
+│   └── web/                        # this documentation site (port 3022, no env vars)
 ├── packages/
-│   ├── ui/                        # Shared UI components (shadcn/ui)
+│   ├── ui/                         # Shared UI components (shadcn/ui)
 │   └── typescript-config/
-├── .env.example
 └── README.md
 ```
+
+`apps/gateway` deliberately has no UI dependencies — no Tailwind, no component library —
+so a fresh deploy builds fast and has little to break.
 
 ## Stack
 
@@ -306,7 +321,7 @@ linear-mcp-gateway/
 - [Linear's MCP server](https://linear.app/docs/mcp) — the proxied tool surface, authenticated with a personal API key per workspace
 - [@linear/sdk](https://github.com/linear/linear) — official Linear GraphQL client, backing the custom tools
 - [Zod](https://zod.dev) — tool argument validation
-- [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS v4](https://tailwindcss.com) — landing page
+- [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS v4](https://tailwindcss.com) — the documentation site only
 - [pnpm](https://pnpm.io) + [Turborepo](https://turbo.build) — monorepo tooling
 
 ## License
