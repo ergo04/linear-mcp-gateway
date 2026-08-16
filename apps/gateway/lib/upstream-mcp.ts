@@ -81,17 +81,29 @@ async function request(
  * rather than globally.
  */
 const toolCache = new Map<string, { tools: UpstreamTool[]; expiresAt: number }>()
-const TOOL_CACHE_TTL_MS = 5 * 60 * 1000
+
+/** Also handed to clients as the `ttlMs` freshness hint on `tools/list`. */
+export const TOOL_CACHE_TTL_MS = 5 * 60 * 1000
 
 export async function listUpstreamTools(apiKey: string): Promise<UpstreamTool[]> {
   const cached = toolCache.get(apiKey)
   if (cached && cached.expiresAt > Date.now()) return cached.tools
 
-  const result = (await request(apiKey, "tools/list")) as {
-    tools?: UpstreamTool[]
-    nextCursor?: string | null
+  // Follow nextCursor: Linear currently returns every tool in one page, but a
+  // single unpaginated read would silently drop the tail the day it doesn't.
+  const tools: UpstreamTool[] = []
+  let cursor: string | undefined
+  for (let page = 0; page < 20; page++) {
+    const result = (await request(
+      apiKey,
+      "tools/list",
+      cursor ? { cursor } : undefined
+    )) as { tools?: UpstreamTool[]; nextCursor?: string | null }
+
+    tools.push(...(result.tools ?? []))
+    if (!result.nextCursor) break
+    cursor = result.nextCursor
   }
-  const tools = result.tools ?? []
 
   toolCache.set(apiKey, { tools, expiresAt: Date.now() + TOOL_CACHE_TTL_MS })
   return tools

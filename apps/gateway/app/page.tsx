@@ -1,6 +1,14 @@
+import { headers } from "next/headers"
+import { authenticateToken } from "@/lib/env"
 import { buildStatusReport, type CheckLevel } from "@/lib/status"
 
 export const dynamic = "force-dynamic"
+
+// A public page describing a deployment that holds live API keys has no business
+// in a search index.
+export const metadata = {
+  robots: { index: false, follow: false },
+}
 
 const HEADLINE: Record<CheckLevel, { icon: string; title: string; blurb: string }> = {
   ok: {
@@ -27,7 +35,14 @@ const COLOR: Record<CheckLevel, string> = {
 }
 
 export default async function StatusPage() {
-  const report = await buildStatusReport()
+  // Anyone can open this page, so names and workspace slugs are only filled in
+  // for a caller that proves it holds a configured token.
+  const authorization = (await headers()).get("authorization") ?? ""
+  const token = authorization.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : undefined
+
+  const report = await buildStatusReport({ detailed: authenticateToken(token) !== null })
   const head = HEADLINE[report.level]
 
   return (
@@ -113,6 +128,18 @@ WS_ACME_LINEAR_KEY="lin_api_..."`}</pre>
       <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 40 }}>
         This page reports presence and validity only — it never displays a token or an
         API key.
+        {report.redacted ? (
+          <>
+            {" "}
+            Names and workspace slugs are hidden because this page is public. To see which
+            item each line refers to, ask for it with a configured token:
+            <br />
+            <code style={{ fontSize: 12 }}>
+              curl -H &quot;Authorization: Bearer &lt;USER_1_TOKEN&gt;&quot;
+              &lt;this-deployment&gt;
+            </code>
+          </>
+        ) : null}
       </p>
     </>
   )

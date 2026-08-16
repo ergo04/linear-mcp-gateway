@@ -24,6 +24,24 @@ Claude Desktop / Code / Cursor
 - `/api/mcp` authenticates the token, resolves which workspaces that user may reach, and forwards each call upstream with the matching key
 - Stateless end to end: Linear's MCP needs no `initialize` handshake and no session id, so this works on Vercel serverless
 
+### Protocol versions
+
+The server is **dual-era**: it implements MCP `2026-07-28`, which dropped the
+`initialize` handshake in favour of per-request `_meta`, while still answering
+`initialize` for clients on `2025-06-18`.
+
+- `server/discover` reports both supported versions, the capabilities and the server
+  identity — cacheable publicly, since none of it depends on the caller.
+- A request declaring an unsupported version in
+  `_meta["io.modelcontextprotocol/protocolVersion"]` gets
+  `UnsupportedProtocolVersionError` (`-32022`) listing what is supported, so the client
+  can retry.
+- `tools/list` carries `ttlMs` and `cacheScope: "private"`. Private is not a detail:
+  the tool list depends on the caller's token, so a shared cache would serve one user's
+  tools to another.
+- Results carry `resultType: "complete"`; the tool list is sorted, which the spec asks
+  for so clients can cache it and prompt caches keep hitting.
+
 ## MCP tools
 
 Every tool takes a **`workspace`** argument (`egix`, `acme`, … — call `list_workspaces` to discover the valid values). It is injected into each upstream schema and stripped again before the call is forwarded.
@@ -115,6 +133,17 @@ Two apps come up: the **gateway** on port **3023** (`/api/mcp` plus a status pag
 
 Open <http://localhost:3023> — the status page lists what is still missing and turns
 green once every Linear key answers.
+
+The status page is **unauthenticated**, so it names nothing: it reports how many members
+and workspaces are configured and what kind of problem exists, never a name, a slug or an
+env var. Pass a configured token to see which item each line refers to:
+
+```bash
+curl -H "Authorization: Bearer tok_abc123" http://localhost:3023
+```
+
+While nothing is configured yet there is nothing to hide, so the page shows full setup
+guidance. It is served `noindex`.
 
 **Test the endpoint:**
 

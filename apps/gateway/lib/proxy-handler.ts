@@ -16,10 +16,50 @@ import * as linear from "@/lib/linear"
 import {
   callUpstreamTool,
   listUpstreamTools,
+  TOOL_CACHE_TTL_MS,
   type UpstreamTool,
 } from "@/lib/upstream-mcp"
 
 const WORKSPACE_PARAM = "workspace"
+
+// --------------------------------------------------------------------------
+// Protocol versions
+//
+// `2026-07-28` dropped the initialize handshake in favour of per-request `_meta`
+// and made every result carry `resultType`. This server is "dual-era": it still
+// answers `initialize` for existing clients while satisfying the newer revision.
+// Only versions actually implemented are advertised — a client that asks for
+// anything else gets UnsupportedProtocolVersionError and retries.
+// --------------------------------------------------------------------------
+
+const MODERN_VERSION = "2026-07-28"
+const LEGACY_VERSION = "2025-06-18"
+const SUPPORTED_VERSIONS = [MODERN_VERSION, LEGACY_VERSION]
+
+const META_PROTOCOL_VERSION = "io.modelcontextprotocol/protocolVersion"
+const META_SERVER_INFO = "io.modelcontextprotocol/serverInfo"
+
+const SERVER_INFO = { name: "linear-mcp-gateway", version: "0.2.0" }
+
+const INSTRUCTIONS =
+  "Multi-workspace router in front of Linear's own MCP. Every tool takes a " +
+  "`workspace` argument — call list_workspaces first to discover the valid values. " +
+  "get_issue hides relations by default: pass `includeRelations: true` to see " +
+  "blocking/blocked-by/related/duplicate links. Tools whose description names " +
+  "specific workspaces are unavailable in the others (Linear gates them per plan)."
+
+/** The protocol version a modern request declares in `_meta`, if any. */
+function declaredVersion(params: unknown): string | undefined {
+  const meta = (params as { _meta?: Record<string, unknown> } | undefined)?._meta
+  const version = meta?.[META_PROTOCOL_VERSION]
+  return typeof version === "string" ? version : undefined
+}
+
+/** Servers SHOULD identify themselves in every result's `_meta`. */
+function withServerInfo<T extends object>(result: T): T {
+  const existing = (result as { _meta?: Record<string, unknown> })._meta ?? {}
+  return { ...result, _meta: { ...existing, [META_SERVER_INFO]: SERVER_INFO } }
+}
 
 export type JsonRpcResponse =
   | { jsonrpc: "2.0"; id: string | number; result: unknown }
@@ -281,7 +321,12 @@ async function listTools(user: AuthenticatedUser) {
     }
   }
 
-  const proxied = [...merged.values()].map(({ tool, workspaceIds }) => {
+  // Sorted, not left in upstream/insertion order: the spec asks for a
+  // deterministic tools/list so clients can cache it and prompt caches keep
+  // hitting. Custom tools stay first — that array is already fixed.
+  const proxied = [...merged.values()]
+    .sort((a, b) => a.tool.name.localeCompare(b.tool.name))
+    .map(({ tool, workspaceIds }) => {
     const partial = workspaceIds.length < allWorkspaceIds.length
     const withParam = withWorkspaceParam(tool, workspaceIds)
     if (!partial) return withParam
@@ -469,30 +514,75 @@ export async function handleProxyRequest(
 
   if (req.method.startsWith("notifications/")) return null
 
+  // A modern client states its version on every request; reject the ones this
+  // server does not implement so the client can retry with a supported one.
+  const requested = declaredVersion(req.params)
+  if (requested && !SUPPORTED_VERSIONS.includes(requested)) {
+    return {
+      jsonrpc: "2.0",
+      id,
+      error: {
+        code: -32022,
+        message: "Unsupported protocol version",
+        data: { supported: SUPPORTED_VERSIONS, requested },
+      },
+    }
+  }
+
   try {
     switch (req.method) {
-      case "initialize":
+      case "server/discover":
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: withServerInfo({
+            resultType: "complete",
+            supportedVersions: SUPPORTED_VERSIONS,
+            capabilities: { tools: {} },
+            instructions: INSTRUCTIONS,
+            // Identity and version support are the same for every caller,
+            // unlike tools/list, so this one is safe for shared caches.
+            ttlMs: 60 * 60 * 1000,
+            cacheScope: "public",
+          }),
+        }
+
+      case "initialize": {
+        // Legacy handshake: answer with the requested version when it is one we
+        // implement, otherwise with the newest revision that still has a
+        // handshake at all — 2026-07-28 has none, so it can never go here.
+        const asked = (req.params as { protocolVersion?: string } | undefined)
+          ?.protocolVersion
         return {
           jsonrpc: "2.0",
           id,
           result: {
-            protocolVersion: "2025-06-18",
+            protocolVersion: asked === LEGACY_VERSION ? asked : LEGACY_VERSION,
             capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: "linear-mcp-gateway (proxy)", version: "0.1.0" },
-            instructions:
-              "Multi-workspace router in front of Linear's own MCP. Every tool takes a " +
-              "`workspace` argument — call list_workspaces first to discover the valid values. " +
-              "get_issue hides relations by default: pass `includeRelations: true` to see " +
-              "blocking/blocked-by/related/duplicate links. Tools whose description names " +
-              "specific workspaces are unavailable in the others (Linear gates them per plan).",
+            serverInfo: SERVER_INFO,
+            instructions: INSTRUCTIONS,
           },
         }
+      }
 
       case "ping":
         return { jsonrpc: "2.0", id, result: {} }
 
       case "tools/list":
-        return { jsonrpc: "2.0", id, result: { tools: await listTools(user) } }
+        return {
+          jsonrpc: "2.0",
+          id,
+          result: withServerInfo({
+            resultType: "complete",
+            tools: await listTools(user),
+            // Same hint the upstream tool cache uses, so a client refetching
+            // after it expires is the first request that costs anything.
+            ttlMs: TOOL_CACHE_TTL_MS,
+            // MUST stay private: which tools exist depends on the caller's
+            // token, so a shared cache would serve one user's list to another.
+            cacheScope: "private",
+          }),
+        }
 
       case "tools/call": {
         const params = req.params as { name?: string; arguments?: unknown } | undefined
@@ -502,7 +592,10 @@ export async function handleProxyRequest(
         return {
           jsonrpc: "2.0",
           id,
-          result: await executeTool(user, params.name, params.arguments),
+          result: withServerInfo({
+            resultType: "complete",
+            ...(await executeTool(user, params.name, params.arguments)),
+          }),
         }
       }
 
