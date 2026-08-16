@@ -1,0 +1,11 @@
+# The CLI uploads the working tree from the repo root, and does not read
+# .gitignore. Without this, local build output and the Turborepo cache ship with
+# every deploy — hundreds of megabytes, and a cache tarball large enough to trip
+# Vercel's 100 MB per-file limit. Vercel builds from source anyway.
+
+.next
+.turbo
+out
+build
+dist
+coverage
