@@ -191,7 +191,6 @@ export async function buildStatusReport(
         .map((w) =>
           probeWorkspace(
             w.id,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             process.env[envVarName(w.id, "LINEAR_KEY")]!
           )
         )

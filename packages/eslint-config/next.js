@@ -1,7 +1,6 @@
 import js from "@eslint/js"
 import pluginNext from "@next/eslint-plugin-next"
 import eslintConfigPrettier from "eslint-config-prettier"
-import pluginReact from "eslint-plugin-react"
 import pluginReactHooks from "eslint-plugin-react-hooks"
 import globals from "globals"
 import tseslint from "typescript-eslint"
@@ -11,6 +10,12 @@ import { config as baseConfig } from "./base.js"
 /**
  * A custom ESLint configuration for libraries that use Next.js.
  *
+ * `eslint-plugin-react` is deliberately absent: its latest release (7.37.5)
+ * declares peer support only up to ESLint 9.7 and crashes on ESLint 10 while
+ * loading its own rules. Its recommended set is largely covered here by
+ * @next/next and react-hooks, so the plugin is dropped rather than pinning the
+ * whole workspace to an older ESLint.
+ *
  * @type {import("eslint").Linter.Config}
  * */
 export const nextJsConfig = [
@@ -19,9 +24,7 @@ export const nextJsConfig = [
   eslintConfigPrettier,
   ...tseslint.configs.recommended,
   {
-    ...pluginReact.configs.flat.recommended,
     languageOptions: {
-      ...pluginReact.configs.flat.recommended.languageOptions,
       globals: {
         ...globals.serviceworker,
       },
@@ -40,12 +43,8 @@ export const nextJsConfig = [
     plugins: {
       "react-hooks": pluginReactHooks,
     },
-    settings: { react: { version: "detect" } },
     rules: {
       ...pluginReactHooks.configs.recommended.rules,
-      // React scope no longer necessary with new JSX transform.
-      "react/react-in-jsx-scope": "off",
-      "react/prop-types": "off",
     },
   },
 ]

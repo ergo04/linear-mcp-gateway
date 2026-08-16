@@ -370,7 +370,6 @@ async function executeCustomTool(
   name: string,
   rawArgs: Record<string, unknown>
 ): Promise<ToolResult> {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const tool = CUSTOM_TOOLS.find((t) => t.name === name)!
 
   if (name === "list_workspaces") {

@@ -38,7 +38,6 @@ function parseWorkspaces(): Record<string, Workspace> {
     const match = key.match(/^WS_([A-Z0-9_]+)_NAME$/)
     if (!match || !value) continue
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const rawSlug = match[1]! // e.g. "ACME" or "BETA_PROJECT"
     const wsId = slugToId(rawSlug) // "acme" or "beta-project"
     const prefix = `WS_${rawSlug}`
@@ -88,7 +87,6 @@ export function describeConfiguration(): Configuration {
   const slugs = new Set<string>()
   for (const key of Object.keys(process.env)) {
     const match = key.match(/^WS_([A-Z0-9_]+)_(NAME|LINEAR_KEY)$/)
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     if (match) slugs.add(match[1]!)
   }
 
