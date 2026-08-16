@@ -2,7 +2,7 @@
 
 A self-hosted MCP (Model Context Protocol) server built with Next.js that gives any MCP
 client — Claude Code, Codex, Cursor, your own agent — access to **several Linear
-workspaces over a single connection**, with no database and no OAuth flow.
+workspaces over a single connection**, with no database and nothing to register.
 
 Linear ships its own excellent MCP server, but one credential means one workspace: covering three workspaces means registering it three times, which some clients (claude.ai connectors) refuse because the URL would be identical. This gateway solves exactly that. It **routes to Linear's official MCP** rather than reimplementing it, so new Linear features show up here for free.
 
@@ -25,6 +25,9 @@ Any MCP client (Claude Code, Codex, Cursor, …)
 - Each Linear workspace has its own Linear API key
 - `/api/mcp` authenticates the token, resolves which workspaces that user may reach, and forwards each call upstream with the matching key
 - Stateless end to end: Linear's MCP needs no `initialize` handshake and no session id, so this works on Vercel serverless
+- Clients that cannot send a header — Claude's connector UI — get the same token through an
+  OAuth flow the gateway serves itself, without storing a thing. See
+  [Claude Desktop and claude.ai](#claude-desktop-and-claudeai--the-connector-ui)
 
 ### Protocol versions
 
@@ -130,6 +133,9 @@ WS_ACME_LINEAR_KEY="lin_api_..."   # Linear: Settings → API → Personal API k
 
 WS_BETA_NAME="Beta Project"
 WS_BETA_LINEAR_KEY="lin_api_..."
+
+# Optional — only for Claude's connectors, see "Claude Desktop and claude.ai" below
+OAUTH_SIGNING_SECRET="another_openssl_rand_base64_32"
 ```
 
 **Generate a secure token:**
@@ -258,6 +264,69 @@ the file — preferable for something that often ends up in a dotfiles repo.
 
 For local development, replace the URL with `http://localhost:3023/api/mcp`.
 
+### Claude Desktop and claude.ai — the connector UI
+
+Claude's **Add custom connector** form takes a URL and, under _Advanced settings_, an
+OAuth client id and secret. There is no field for a header, and none is coming — the
+request for one was [closed as not
+planned](https://github.com/anthropics/claude-ai-mcp/issues/112). So the bearer token
+every other client uses cannot be handed to this one, and the connector is unreachable
+unless the server speaks OAuth.
+
+It now does. Set `OAUTH_SIGNING_SECRET` and redeploy, then:
+
+| Field                 | Value                                 |
+| --------------------- | ------------------------------------- |
+| Name                  | anything                              |
+| Remote MCP server URL | `https://your-app.vercel.app/api/mcp` |
+| OAuth Client ID       | anything, e.g. `linear-gateway`       |
+| OAuth Client Secret   | **your `USER_N_TOKEN`**               |
+
+Click **Connect**, approve on the consent screen, done. The same connector works across
+claude.ai, Desktop and mobile, since they share one backend.
+
+**Why the client secret is the token.** Anthropic documents supplying your own
+pre-registered client credentials as the alternative to Dynamic Client Registration, and
+those two fields are the only place in that form where a user-supplied secret reaches the
+server. So the gateway treats the client secret as what it already is elsewhere: the
+credential that says which user is connecting. One credential, one more way to present
+it — not a second thing to steal.
+
+**Why it needs no database.** An authorization server is normally all state — clients,
+codes, tokens. Here every artefact is an HMAC-signed, expiring blob carrying what a lookup
+would have returned: the code carries the PKCE challenge and the redirect it was minted
+for, the tokens carry the user and the audience. `OAUTH_SIGNING_SECRET` is what signs
+them, so rotating it invalidates all of them at once, and rotating a `USER_N_TOKEN`
+invalidates everything issued to that user.
+
+The flow, once, so nothing here is a black box:
+
+```
+Claude → POST /api/mcp                         401 + WWW-Authenticate: resource_metadata=…
+       → GET  /.well-known/oauth-protected-resource/api/mcp   names this origin as its own AS
+       → GET  /.well-known/oauth-authorization-server         no registration_endpoint: use the
+                                                              credentials the user typed
+       → GET  /oauth/authorize?…                consent screen → 303 back with a code
+       → POST /api/oauth/token                  code + PKCE verifier + client secret
+                                                → access token (1h) + refresh token (30d)
+       → POST /api/mcp                          Authorization: Bearer <access token>
+```
+
+Three things break this, all outside the code:
+
+- **Vercel deployment protection.** Claude reaches the connector from Anthropic's
+  infrastructure (`160.79.104.0/21`), not from your browser, so a protected deployment
+  answers it with a login page. Turn it off for the gateway project.
+- **A redirecting URL.** If the URL you enter `301`s to another host — apex to `www.`,
+  vanity domain to CDN — the `Authorization` header is dropped on the hop and every
+  request arrives unauthenticated. Register the host that actually serves it.
+- **Discovery caching.** Claude caches the two metadata documents globally for about five
+  minutes. After changing `GATEWAY_URL` or the scopes, wait it out before concluding
+  anything.
+
+**Claude Code does not need any of this** — it takes a header, so the `claude mcp add`
+above stays the shortest path. The OAuth surface exists for the clients that cannot.
+
 ### 6. First calls
 
 Every tool takes a `workspace` argument, so start by discovering the valid values:
@@ -308,7 +377,7 @@ the user simply never sees that workspace. The status page reports it as a warni
 
 ## Security notes
 
-- Tokens are compared with strict equality — use long random values (`openssl rand -base64 32`)
+- Tokens are compared in constant time — still use long random values (`openssl rand -base64 32`)
 - Each user only sees workspaces explicitly listed in their `USER_N_WORKSPACES`
 - Linear API keys are never exposed to the client
 - All authentication happens server-side on every request
@@ -318,6 +387,28 @@ the user simply never sees that workspace. The status page reports it as a warni
 - Deployment URLs are not a secret. The bearer token is what protects the endpoint — an
   obscure URL only reduces drive-by scanning
 - There is no rate limiting built in — add it at the Vercel/reverse-proxy level if needed
+
+On the OAuth surface specifically, since it is the newest thing here:
+
+- It is **off** unless `OAUTH_SIGNING_SECRET` is set, and the discovery endpoints 404
+  while it is. Advertising an authorization server that cannot sign is worse than
+  advertising none
+- The consent screen authenticates nobody, and says so. Anyone can reach it and click
+  Authorize; the code that comes out is worth nothing without a valid `USER_N_TOKEN`
+  presented as the client secret at `/token`
+- Redirect URIs are an exact allowlist — Claude's callback, plus loopback addresses with
+  the port ignored per RFC 8252 for native clients. Anything else is refused on the page
+  rather than redirected to, which is the difference between an authorization server and
+  an open redirector
+- Access tokens are bound to the origin they were minted for and rejected elsewhere, so
+  one taken from a preview deployment does not open production
+- **Codes are replayable within their 120-second lifetime.** A server with no storage
+  cannot mark one spent. Redeeming it still requires both the PKCE verifier and the
+  client secret, so the window buys an attacker nothing that holding those two did not
+  already buy — but it is a real difference from a stateful implementation
+- **Refresh tokens cannot be revoked individually**, for the same reason. Rotating that
+  user's `USER_N_TOKEN` invalidates theirs; rotating `OAUTH_SIGNING_SECRET` invalidates
+  everyone's
 
 ## Project structure
 
@@ -330,9 +421,13 @@ linear-mcp-gateway/
 │   ├── gateway/                    # ← what you deploy (port 3023)
 │   │   ├── app/
 │   │   │   ├── api/mcp/route.ts    # MCP HTTP endpoint
+│   │   │   ├── api/oauth/          # authorize (form post) and token endpoints
+│   │   │   ├── oauth/authorize/    # Consent screen
+│   │   │   ├── .well-known/        # RFC 9728 + RFC 8414 discovery documents
 │   │   │   └── page.tsx            # Status page: what's missing, green when ready
 │   │   ├── lib/
 │   │   │   ├── env.ts              # Env var parser, auth, config introspection
+│   │   │   ├── oauth.ts            # Stateless authorization server, for Claude connectors
 │   │   │   ├── proxy-handler.ts    # MCP protocol, workspace routing, custom tools
 │   │   │   ├── upstream-mcp.ts     # Client for Linear's own MCP (SSE, tool cache)
 │   │   │   ├── mcp-headers.ts      # Base64 sentinel encoding for mirrored headers

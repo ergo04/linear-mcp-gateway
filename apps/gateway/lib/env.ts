@@ -10,6 +10,8 @@
  *   WS_ACME_LINEAR_KEY="lin_api_..."
  */
 
+import { timingSafeEqual } from "node:crypto"
+
 export interface Workspace {
   /** Slug used as the workspace ID in tool calls (e.g. "acme") */
   id: string
@@ -20,6 +22,8 @@ export interface Workspace {
 }
 
 export interface AuthenticatedUser {
+  /** The USER_N index — the only stable id a user has in an env-var config. */
+  id: number
   name: string
   workspaces: Workspace[]
 }
@@ -130,6 +134,48 @@ export function describeConfiguration(): Configuration {
   return { users, workspaces }
 }
 
+interface UserBlock {
+  index: number
+  name: string
+  token: string
+  workspaceSlugs: string[]
+}
+
+function readUserBlock(index: number): UserBlock | null {
+  const name = process.env[`USER_${index}_NAME`]
+  const token = process.env[`USER_${index}_TOKEN`]
+  if (!name || !token) return null
+
+  return {
+    index,
+    name,
+    token,
+    workspaceSlugs: (process.env[`USER_${index}_WORKSPACES`] ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  }
+}
+
+function resolveUser(block: UserBlock): AuthenticatedUser {
+  const allWorkspaces = parseWorkspaces()
+
+  return {
+    id: block.index,
+    name: block.name,
+    workspaces: block.workspaceSlugs
+      .map((slug) => allWorkspaces[slug])
+      .filter((ws): ws is Workspace => ws !== undefined),
+  }
+}
+
+/** Compare in constant time: this runs on every request, against a secret. */
+function tokensMatch(stored: string, presented: string): boolean {
+  const a = Buffer.from(stored)
+  const b = Buffer.from(presented)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
 /**
  * Authenticate a Bearer token and return the user with their accessible workspaces.
  * Returns null if the token is missing or doesn't match any configured user.
@@ -139,31 +185,31 @@ export function authenticateToken(
 ): AuthenticatedUser | null {
   if (!token) return null
 
-  const allWorkspaces = parseWorkspaces()
-
   // Walk USER_1_, USER_2_, … until a gap is found
   for (let i = 1; i <= 100; i++) {
-    const name = process.env[`USER_${i}_NAME`]
-    const storedToken = process.env[`USER_${i}_TOKEN`]
-    const workspacesStr = process.env[`USER_${i}_WORKSPACES`]
+    const block = readUserBlock(i)
+    if (!block) break
 
-    // Stop at the first missing block
-    if (!name || !storedToken) break
+    if (tokensMatch(block.token, token)) return resolveUser(block)
+  }
 
-    if (storedToken !== token) continue
+  return null
+}
 
-    const workspaceSlugs = workspacesStr
-      ? workspacesStr
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : []
+/**
+ * Look a user up by index, for credentials that carry one instead of a token.
+ * Walks from the start so it stops at the same gap authenticateToken() does —
+ * otherwise a user made unreachable by a deleted block would keep working
+ * through any long-lived credential already issued to them.
+ */
+export function authenticateUserIndex(
+  index: number
+): { user: AuthenticatedUser; token: string } | null {
+  for (let i = 1; i <= 100; i++) {
+    const block = readUserBlock(i)
+    if (!block) break
 
-    const workspaces = workspaceSlugs
-      .map((slug) => allWorkspaces[slug])
-      .filter((ws): ws is Workspace => ws !== undefined)
-
-    return { name, workspaces }
+    if (i === index) return { user: resolveUser(block), token: block.token }
   }
 
   return null

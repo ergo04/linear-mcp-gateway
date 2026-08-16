@@ -13,7 +13,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
-import { authenticateToken } from "@/lib/env"
+import { authenticateBearer, challengeHeader } from "@/lib/oauth"
 import { handleProxyRequest } from "@/lib/proxy-handler"
 
 // Use the Node.js runtime so @linear/sdk can run without restrictions
@@ -30,8 +30,13 @@ export async function POST(req: NextRequest) {
     ? authHeader.slice(7).trim()
     : undefined
 
-  const user = authenticateToken(token)
+  const user = authenticateBearer(token, req.headers)
   if (!user) {
+    // The WWW-Authenticate header is what turns this 401 into the start of an
+    // OAuth flow for clients that cannot be given a token by hand — Claude's
+    // connectors read the pointer from here, and from nowhere else.
+    const challenge = challengeHeader(req.headers)
+
     return NextResponse.json(
       {
         jsonrpc: "2.0",
@@ -41,7 +46,10 @@ export async function POST(req: NextRequest) {
           message: "Unauthorized: missing or invalid Bearer token",
         },
       },
-      { status: 401 }
+      {
+        status: 401,
+        headers: challenge ? { "WWW-Authenticate": challenge } : undefined,
+      }
     )
   }
 
