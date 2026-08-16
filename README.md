@@ -362,8 +362,7 @@ pnpm typecheck     # tsc (TypeScript 7's native compiler)
 ESLint 9.7 at most and crashes on 10, and `typescript-eslint` accepts
 `typescript@<6.1.0`, which pins the whole workspace to TypeScript 6. oxlint runs its
 type-aware rules through `tsgolint`, which embeds tsgo — so it needs no TypeScript
-programmatic API, and TypeScript 7 works. Rules live in `.oxlintrc.json`; see
-`.oxlintrc.notes.md` for the one rule deliberately left off.
+programmatic API, and TypeScript 7 works. Rules live in `.oxlintrc.json`.
 
 **Prettier keeps formatting**, with `@prettier/plugin-oxc` swapping in OXC's Rust parser.
 Verified to produce byte-identical output, and `prettier-plugin-tailwindcss` still sorts

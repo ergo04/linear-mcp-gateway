@@ -601,7 +601,7 @@ export async function listProjects(
   return result.nodes.map((p) => ({
     id: p.id,
     name: p.name,
-    description: p.description ?? null,
+    description: p.description,
     state: p.state,
     progress: p.progress,
     startDate: p.startDate ?? null,
@@ -619,7 +619,7 @@ export async function getProject(
   return {
     id: p.id,
     name: p.name,
-    description: p.description ?? null,
+    description: p.description,
     state: p.state,
     progress: p.progress,
     startDate: p.startDate ?? null,
@@ -714,9 +714,9 @@ function mapMilestone(m: RawMilestoneNode): MilestoneSummary {
     name: m.name,
     description: m.description ?? null,
     targetDate: m.targetDate ?? null,
-    progress: m.progress ?? 0,
+    progress: m.progress,
     status: m.status ?? null,
-    sortOrder: m.sortOrder ?? 0,
+    sortOrder: m.sortOrder,
     project: m.project?.name ?? null,
     projectId: m.project?.id ?? null,
   }
@@ -1409,7 +1409,7 @@ export async function listCustomers(
   return result.nodes.map((c) => ({
     id: c.id,
     name: c.name,
-    domains: c.domains ?? [],
+    domains: c.domains,
     revenue: c.revenue ?? null,
     size: c.size ?? null,
   }))
@@ -1442,7 +1442,7 @@ export async function saveCustomer(
     return {
       id: c.id,
       name: c.name,
-      domains: c.domains ?? [],
+      domains: c.domains,
       revenue: c.revenue ?? null,
       size: c.size ?? null,
     }
@@ -1459,7 +1459,7 @@ export async function saveCustomer(
     return {
       id: c.id,
       name: c.name,
-      domains: c.domains ?? [],
+      domains: c.domains,
       revenue: c.revenue ?? null,
       size: c.size ?? null,
     }
@@ -1512,7 +1512,7 @@ export async function saveCustomerNeed(
       body: n.body ?? null,
       customerId: n.customerId ?? null,
       issueId: issue?.id ?? null,
-      priority: n.priority ?? null,
+      priority: n.priority,
     }
   } else {
     const payload = await client.createCustomerNeed({
@@ -1529,7 +1529,7 @@ export async function saveCustomerNeed(
       body: n.body ?? null,
       customerId: n.customerId ?? null,
       issueId: issue?.id ?? null,
-      priority: n.priority ?? null,
+      priority: n.priority,
     }
   }
 }
