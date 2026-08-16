@@ -51,7 +51,8 @@ const INSTRUCTIONS =
 
 /** The protocol version a modern request declares in `_meta`, if any. */
 function declaredVersion(params: unknown): string | undefined {
-  const meta = (params as { _meta?: Record<string, unknown> } | undefined)?._meta
+  const meta = (params as { _meta?: Record<string, unknown> } | undefined)
+    ?._meta
   const version = meta?.[META_PROTOCOL_VERSION]
   return typeof version === "string" ? version : undefined
 }
@@ -122,7 +123,10 @@ const CUSTOM_TOOLS: CustomTool[] = [
       type: "object" as const,
       properties: {
         milestoneId: { type: "string", description: "Milestone ID" },
-        sortOrder: { type: "number", description: "New position — lower sorts first" },
+        sortOrder: {
+          type: "number",
+          description: "New position — lower sorts first",
+        },
       },
       required: ["milestoneId", "sortOrder"],
     },
@@ -143,7 +147,8 @@ const CUSTOM_TOOLS: CustomTool[] = [
         },
         milestoneId: {
           type: "string",
-          description: "Target milestone ID — omit to detach these issues from their milestone",
+          description:
+            "Target milestone ID — omit to detach these issues from their milestone",
         },
       },
       required: ["issueIds"],
@@ -159,7 +164,9 @@ const CUSTOM_TOOLS: CustomTool[] = [
       "Archive a Linear project. Linear's own MCP cannot archive. Archived projects stay recoverable with unarchive_project.",
     inputSchema: {
       type: "object",
-      properties: { projectId: { type: "string", description: "Project ID to archive" } },
+      properties: {
+        projectId: { type: "string", description: "Project ID to archive" },
+      },
       required: ["projectId"],
     },
     schema: z.object({ projectId: z.string().min(1) }),
@@ -169,7 +176,9 @@ const CUSTOM_TOOLS: CustomTool[] = [
     description: "Restore a previously archived Linear project.",
     inputSchema: {
       type: "object",
-      properties: { projectId: { type: "string", description: "Project ID to restore" } },
+      properties: {
+        projectId: { type: "string", description: "Project ID to restore" },
+      },
       required: ["projectId"],
     },
     schema: z.object({ projectId: z.string().min(1) }),
@@ -181,7 +190,10 @@ const CUSTOM_TOOLS: CustomTool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        initiativeId: { type: "string", description: "Initiative ID to archive" },
+        initiativeId: {
+          type: "string",
+          description: "Initiative ID to archive",
+        },
       },
       required: ["initiativeId"],
     },
@@ -193,7 +205,10 @@ const CUSTOM_TOOLS: CustomTool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        initiativeId: { type: "string", description: "Initiative ID to restore" },
+        initiativeId: {
+          type: "string",
+          description: "Initiative ID to restore",
+        },
       },
       required: ["initiativeId"],
     },
@@ -206,7 +221,9 @@ const CUSTOM_TOOLS: CustomTool[] = [
       "Linear's own MCP exposes initiatives but not their project links.",
     inputSchema: {
       type: "object",
-      properties: { initiativeId: { type: "string", description: "Initiative ID" } },
+      properties: {
+        initiativeId: { type: "string", description: "Initiative ID" },
+      },
       required: ["initiativeId"],
     },
     schema: z.object({ initiativeId: z.string().min(1) }),
@@ -222,7 +239,8 @@ const CUSTOM_TOOLS: CustomTool[] = [
         projectId: { type: "string", description: "Project ID to link" },
         sortOrder: {
           type: "number",
-          description: "Position within the initiative (optional) — lower sorts first",
+          description:
+            "Position within the initiative (optional) — lower sorts first",
         },
       },
       required: ["initiativeId", "projectId"],
@@ -258,7 +276,10 @@ const CUSTOM_TOOL_NAMES = new Set<string>(CUSTOM_TOOLS.map((t) => t.name))
 // Tool listing
 // --------------------------------------------------------------------------
 
-function withWorkspaceParam(tool: UpstreamTool, workspaceIds: string[]): UpstreamTool {
+function withWorkspaceParam(
+  tool: UpstreamTool,
+  workspaceIds: string[]
+): UpstreamTool {
   const schema = tool.inputSchema ?? { type: "object", properties: {} }
   const existing = (schema.properties ?? {}) as Record<string, unknown>
 
@@ -312,7 +333,10 @@ async function listTools(user: AuthenticatedUser) {
     })
   )
 
-  const merged = new Map<string, { tool: UpstreamTool; workspaceIds: string[] }>()
+  const merged = new Map<
+    string,
+    { tool: UpstreamTool; workspaceIds: string[] }
+  >()
   for (const { ws, tools } of perWorkspace) {
     for (const tool of tools) {
       if (CUSTOM_TOOL_NAMES.has(tool.name)) continue
@@ -328,16 +352,16 @@ async function listTools(user: AuthenticatedUser) {
   const proxied = [...merged.values()]
     .sort((a, b) => a.tool.name.localeCompare(b.tool.name))
     .map(({ tool, workspaceIds }) => {
-    const partial = workspaceIds.length < allWorkspaceIds.length
-    const withParam = withWorkspaceParam(tool, workspaceIds)
-    if (!partial) return withParam
+      const partial = workspaceIds.length < allWorkspaceIds.length
+      const withParam = withWorkspaceParam(tool, workspaceIds)
+      if (!partial) return withParam
 
-    return {
-      ...withParam,
-      description:
-        `${tool.description ?? ""}\n\nOnly available in these workspaces: ${workspaceIds.join(", ")}.`.trim(),
-    }
-  })
+      return {
+        ...withParam,
+        description:
+          `${tool.description ?? ""}\n\nOnly available in these workspaces: ${workspaceIds.join(", ")}.`.trim(),
+      }
+    })
 
   return [...custom, ...proxied]
 }
@@ -373,21 +397,35 @@ async function executeCustomTool(
   const tool = CUSTOM_TOOLS.find((t) => t.name === name)!
 
   if (name === "list_workspaces") {
-    if (user.workspaces.length === 0) return ok("No workspaces configured for this user.")
-    const lines = user.workspaces.map((w) => `- **${w.name}** (${WORKSPACE_PARAM}: \`${w.id}\`)`)
+    if (user.workspaces.length === 0)
+      return ok("No workspaces configured for this user.")
+    const lines = user.workspaces.map(
+      (w) => `- **${w.name}** (${WORKSPACE_PARAM}: \`${w.id}\`)`
+    )
     return ok(`## Accessible workspaces\n\n${lines.join("\n")}`)
   }
 
   const ws = resolveWorkspace(user, rawArgs[WORKSPACE_PARAM])
   const { [WORKSPACE_PARAM]: _ignored, ...rest } = rawArgs
   const parsed = tool.schema.safeParse(rest)
-  if (!parsed.success) return { content: [{ type: "text", text: `Invalid arguments: ${parsed.error.message}` }], isError: true }
+  if (!parsed.success)
+    return {
+      content: [
+        { type: "text", text: `Invalid arguments: ${parsed.error.message}` },
+      ],
+      isError: true,
+    }
   const args = parsed.data as Record<string, unknown>
 
   switch (name) {
     case "delete_milestone": {
-      const m = await linear.deleteMilestone(ws.linearApiKey, args["milestoneId"] as string)
-      const detached = m.detachedIssuesCapped ? `${m.detachedIssues}+` : `${m.detachedIssues}`
+      const m = await linear.deleteMilestone(
+        ws.linearApiKey,
+        args["milestoneId"] as string
+      )
+      const detached = m.detachedIssuesCapped
+        ? `${m.detachedIssues}+`
+        : `${m.detachedIssues}`
       return ok(
         `Milestone **${m.name}** deleted (id: \`${m.id}\`).\n` +
           `${detached} issue(s) stayed in the project with no milestone assigned.`
@@ -399,7 +437,9 @@ async function executeCustomTool(
         id: args["milestoneId"] as string,
         sortOrder: args["sortOrder"] as number,
       })
-      return ok(`Milestone **${m.name}** moved to sortOrder ${m.sortOrder} in ${m.project ?? "its project"}.`)
+      return ok(
+        `Milestone **${m.name}** moved to sortOrder ${m.sortOrder} in ${m.project ?? "its project"}.`
+      )
     }
 
     case "assign_issues_to_milestone": {
@@ -408,23 +448,38 @@ async function executeCustomTool(
         args["issueIds"] as string[],
         (args["milestoneId"] as string | undefined) || null
       )
-      const target = result.milestone ? `milestone **${result.milestone}**` : "no milestone"
+      const target = result.milestone
+        ? `milestone **${result.milestone}**`
+        : "no milestone"
       const lines = result.issues.map((i) => `- **${i.identifier}** ${i.title}`)
-      return ok(`## ${result.issues.length} issue(s) assigned to ${target}\n\n${lines.join("\n")}`)
+      return ok(
+        `## ${result.issues.length} issue(s) assigned to ${target}\n\n${lines.join("\n")}`
+      )
     }
 
     case "archive_project": {
-      const p = await linear.archiveProject(ws.linearApiKey, args["projectId"] as string)
-      return ok(`Project **${p.name}** archived (id: \`${p.id}\`). Restore with unarchive_project.`)
+      const p = await linear.archiveProject(
+        ws.linearApiKey,
+        args["projectId"] as string
+      )
+      return ok(
+        `Project **${p.name}** archived (id: \`${p.id}\`). Restore with unarchive_project.`
+      )
     }
 
     case "unarchive_project": {
-      const p = await linear.unarchiveProject(ws.linearApiKey, args["projectId"] as string)
+      const p = await linear.unarchiveProject(
+        ws.linearApiKey,
+        args["projectId"] as string
+      )
       return ok(`Project **${p.name}** restored (id: \`${p.id}\`)`)
     }
 
     case "archive_initiative": {
-      const i = await linear.archiveInitiative(ws.linearApiKey, args["initiativeId"] as string)
+      const i = await linear.archiveInitiative(
+        ws.linearApiKey,
+        args["initiativeId"] as string
+      )
       return ok(
         `Initiative **${i.name}** archived (id: \`${i.id}\`). Restore with unarchive_initiative.`
       )
@@ -443,14 +498,17 @@ async function executeCustomTool(
         ws.linearApiKey,
         args["initiativeId"] as string
       )
-      if (projects.length === 0) return ok("No projects linked to this initiative.")
+      if (projects.length === 0)
+        return ok("No projects linked to this initiative.")
       const lines = projects.map(
         (p) =>
           `- **${p.projectName}** [${p.state}]` +
           (p.targetDate ? ` | Due: ${p.targetDate}` : "") +
           `\n  project id: \`${p.projectId}\` | link id: \`${p.linkId}\``
       )
-      return ok(`## Linked projects (${projects.length})\n\n${lines.join("\n")}`)
+      return ok(
+        `## Linked projects (${projects.length})\n\n${lines.join("\n")}`
+      )
     }
 
     case "link_project_to_initiative": {
@@ -466,12 +524,18 @@ async function executeCustomTool(
     }
 
     case "unlink_project_from_initiative": {
-      await linear.unlinkProjectFromInitiative(ws.linearApiKey, args["linkId"] as string)
+      await linear.unlinkProjectFromInitiative(
+        ws.linearApiKey,
+        args["linkId"] as string
+      )
       return ok(`Link \`${args["linkId"]}\` removed.`)
     }
 
     default:
-      return { content: [{ type: "text", text: `Unknown tool: ${name}` }], isError: true }
+      return {
+        content: [{ type: "text", text: `Unknown tool: ${name}` }],
+        isError: true,
+      }
   }
 }
 
@@ -483,7 +547,8 @@ async function executeTool(
   const args = (rawArgs ?? {}) as Record<string, unknown>
 
   try {
-    if (CUSTOM_TOOL_NAMES.has(name)) return await executeCustomTool(user, name, args)
+    if (CUSTOM_TOOL_NAMES.has(name))
+      return await executeCustomTool(user, name, args)
 
     const ws = resolveWorkspace(user, args[WORKSPACE_PARAM])
     const { [WORKSPACE_PARAM]: _ignored, ...forwarded } = args
@@ -493,7 +558,12 @@ async function executeTool(
     return result as ToolResult
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    return { content: [{ type: "text", text: `Error executing tool "${name}": ${message}` }], isError: true }
+    return {
+      content: [
+        { type: "text", text: `Error executing tool "${name}": ${message}` },
+      ],
+      isError: true,
+    }
   }
 }
 
@@ -548,17 +618,26 @@ export async function handleProxyRequest(
   body: unknown,
   headers: Headers = new Headers()
 ): Promise<HandlerOutcome> {
-  const req = body as { id?: string | number; method?: string; params?: unknown }
+  const req = body as {
+    id?: string | number
+    method?: string
+    params?: unknown
+  }
   const id = req.id ?? 0
 
   if (!req.method) {
     return {
       status: 400,
-      body: { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request" } },
+      body: {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32600, message: "Invalid Request" },
+      },
     }
   }
 
-  if (req.method.startsWith("notifications/")) return { status: 202, body: null }
+  if (req.method.startsWith("notifications/"))
+    return { status: 202, body: null }
 
   const mismatch = headerMismatch(headers, req.method, req.params)
   if (mismatch) {
@@ -643,7 +722,8 @@ export async function handleProxyRequest(
         )
 
       case "tools/call": {
-        const params = req.params as { name?: string; arguments?: unknown } | undefined
+        const params = req.params as
+          { name?: string; arguments?: unknown } | undefined
         if (!params?.name) {
           return {
             status: 400,

@@ -1,4 +1,10 @@
-export function CodeBlock({ children, label }: { children: string; label?: string }) {
+export function CodeBlock({
+  children,
+  label,
+}: {
+  children: string
+  label?: string
+}) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       {label && (

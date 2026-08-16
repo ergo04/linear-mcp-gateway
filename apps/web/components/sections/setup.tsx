@@ -22,11 +22,12 @@ export function SetupSection() {
               <VercelLogo className="size-3.5" />
               On Vercel, in one click
             </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              The button deploys the <strong>gateway</strong>, not this site, and asks for
-              the environment variables up front. Once it is live, open the deployment: it
-              serves a status page that tells you exactly what is still missing, and turns
-              green when every Linear key answers.
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              The button deploys the <strong>gateway</strong>, not this site,
+              and asks for the environment variables up front. Once it is live,
+              open the deployment: it serves a status page that tells you
+              exactly what is still missing, and turns green when every Linear
+              key answers.
             </p>
             <div>
               <Link
@@ -39,13 +40,15 @@ export function SetupSection() {
                 Deploy
               </Link>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Generate the token with{" "}
-              <code className="font-mono text-xs">openssl rand -base64 32</code>, and create
-              the Linear key under <strong>Settings → API → Personal API keys</strong>. Add
-              more workspaces later by adding another{" "}
-              <code className="font-mono text-xs">WS_&lt;SLUG&gt;_*</code> pair and listing
-              the slug in <code className="font-mono text-xs">USER_1_WORKSPACES</code>.
+              <code className="font-mono text-xs">openssl rand -base64 32</code>
+              , and create the Linear key under{" "}
+              <strong>Settings → API → Personal API keys</strong>. Add more
+              workspaces later by adding another{" "}
+              <code className="font-mono text-xs">WS_&lt;SLUG&gt;_*</code> pair
+              and listing the slug in{" "}
+              <code className="font-mono text-xs">USER_1_WORKSPACES</code>.
             </p>
           </div>
 
@@ -56,10 +59,11 @@ export function SetupSection() {
 cd linear-mcp-gateway
 pnpm install
 cp apps/gateway/.env.example apps/gateway/.env.local`}</CodeBlock>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Fill in <code className="font-mono text-xs">apps/gateway/.env.local</code>.
-              One block per person, one per workspace — the slug in the variable name
-              becomes the workspace ID:{" "}
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Fill in{" "}
+              <code className="font-mono text-xs">apps/gateway/.env.local</code>
+              . One block per person, one per workspace — the slug in the
+              variable name becomes the workspace ID:{" "}
               <code className="font-mono text-xs">WS_ACME_*</code> →{" "}
               <code className="font-mono text-xs">acme</code>.
             </p>
@@ -72,20 +76,22 @@ WS_ACME_LINEAR_KEY="lin_api_..."
 
 WS_BETA_NAME="Beta Project"
 WS_BETA_LINEAR_KEY="lin_api_..."`}</CodeBlock>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Then <code className="font-mono text-xs">pnpm dev</code> and open{" "}
-              <code className="font-mono text-xs">localhost:3023</code> for the same status
-              page.
+              <code className="font-mono text-xs">localhost:3023</code> for the
+              same status page.
             </p>
           </div>
 
           {/* Connect */}
           <div className="flex flex-col gap-4">
             <h3 className="font-medium">Connecting a client</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              It is a plain Streamable HTTP MCP server, so any client that can call an HTTP
-              endpoint with an <code className="font-mono text-xs">Authorization</code>{" "}
-              header works. You need the URL and your token — nothing else. Two examples:
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              It is a plain Streamable HTTP MCP server, so any client that can
+              call an HTTP endpoint with an{" "}
+              <code className="font-mono text-xs">Authorization</code> header
+              works. You need the URL and your token — nothing else. Two
+              examples:
             </p>
             <CodeBlock label="Claude Code">{`claude mcp add linear --transport http \\
   https://your-deployment.vercel.app/api/mcp \\
@@ -95,12 +101,13 @@ WS_BETA_LINEAR_KEY="lin_api_..."`}</CodeBlock>
 [mcp_servers.linear]
 url = "https://your-deployment.vercel.app/api/mcp"
 bearer_token_env_var = "LINEAR_GATEWAY_TOKEN"`}</CodeBlock>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Clients that only speak stdio can bridge with{" "}
-              <code className="font-mono text-xs">mcp-remote</code>. Every tool takes a{" "}
-              <code className="font-mono text-xs">workspace</code> argument — start with{" "}
-              <code className="font-mono text-xs">list_workspaces</code>. The full tool list
-              and the details worth knowing are in the{" "}
+              <code className="font-mono text-xs">mcp-remote</code>. Every tool
+              takes a <code className="font-mono text-xs">workspace</code>{" "}
+              argument — start with{" "}
+              <code className="font-mono text-xs">list_workspaces</code>. The
+              full tool list and the details worth knowing are in the{" "}
               <Link
                 href={REPO}
                 target="_blank"

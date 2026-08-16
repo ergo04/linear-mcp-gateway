@@ -11,9 +11,10 @@ export function CreditsSection() {
         <SectionLabel>Credits</SectionLabel>
 
         <p className="mt-6 text-sm leading-relaxed text-muted-foreground">
-          Built by <strong className="text-foreground">Simone Ergotino</strong> — because
-          working across three Linear workspaces from an AI client should not take three
-          connections. Open source under the MIT license: fork it, host it, change it.
+          Built by <strong className="text-foreground">Simone Ergotino</strong>{" "}
+          — because working across three Linear workspaces from an AI client
+          should not take three connections. Open source under the MIT license:
+          fork it, host it, change it.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm">

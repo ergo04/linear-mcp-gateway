@@ -16,14 +16,17 @@ export function HeroSection() {
 
           <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
             All of Linear from your AI client —{" "}
-            <span className="text-muted-foreground">every workspace, one connection.</span>
+            <span className="text-muted-foreground">
+              every workspace, one connection.
+            </span>
           </h1>
 
-          <p className="text-base text-muted-foreground leading-relaxed">
-            A small gateway you host yourself. It routes to Linear&apos;s own MCP server and
-            adds a <code className="font-mono text-sm">workspace</code> argument to every
-            tool, so a single connection reaches all of your workspaces. Plain Streamable
-            HTTP: any MCP client can use it.
+          <p className="text-base leading-relaxed text-muted-foreground">
+            A small gateway you host yourself. It routes to Linear&apos;s own
+            MCP server and adds a{" "}
+            <code className="font-mono text-sm">workspace</code> argument to
+            every tool, so a single connection reaches all of your workspaces.
+            Plain Streamable HTTP: any MCP client can use it.
           </p>
 
           <div className="flex flex-wrap gap-3 pt-2">

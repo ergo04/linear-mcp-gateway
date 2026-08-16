@@ -24,7 +24,11 @@ export function encodeHeaderValue(value: string): string {
   // A plain value that happens to look like the sentinel must be encoded too,
   // otherwise the receiver would decode something that was never encoded.
   if (isPlainAscii(value) && !isSentinel(value)) return value
-  return SENTINEL_PREFIX + Buffer.from(value, "utf8").toString("base64") + SENTINEL_SUFFIX
+  return (
+    SENTINEL_PREFIX +
+    Buffer.from(value, "utf8").toString("base64") +
+    SENTINEL_SUFFIX
+  )
 }
 
 export function decodeHeaderValue(value: string): string {

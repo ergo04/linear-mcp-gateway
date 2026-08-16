@@ -34,7 +34,10 @@ interface UpstreamResponse {
  * message per request, so the `data:` payloads have to be unwrapped. Plain JSON
  * is accepted too, in case the upstream stops framing single replies as SSE.
  */
-function parseUpstreamBody(contentType: string, body: string): UpstreamResponse {
+function parseUpstreamBody(
+  contentType: string,
+  body: string
+): UpstreamResponse {
   if (!contentType.includes("text/event-stream")) return JSON.parse(body)
 
   const messages = body
@@ -44,7 +47,9 @@ function parseUpstreamBody(contentType: string, body: string): UpstreamResponse 
     .filter((payload) => payload && payload !== "[DONE]")
     .map((payload) => JSON.parse(payload) as UpstreamResponse)
 
-  const answer = messages.find((m) => m.result !== undefined || m.error !== undefined)
+  const answer = messages.find(
+    (m) => m.result !== undefined || m.error !== undefined
+  )
   if (!answer) throw new Error("Upstream returned no JSON-RPC result")
   return answer
 }
@@ -93,7 +98,9 @@ async function request(
 
   const parsed = parseUpstreamBody(res.headers.get("content-type") ?? "", text)
   if (parsed.error) {
-    throw new Error(`Linear MCP error ${parsed.error.code}: ${parsed.error.message}`)
+    throw new Error(
+      `Linear MCP error ${parsed.error.code}: ${parsed.error.message}`
+    )
   }
   return parsed.result
 }
@@ -103,12 +110,17 @@ async function request(
  * the workspace's plan (e.g. the `customer*` tools), so this is cached per key
  * rather than globally.
  */
-const toolCache = new Map<string, { tools: UpstreamTool[]; expiresAt: number }>()
+const toolCache = new Map<
+  string,
+  { tools: UpstreamTool[]; expiresAt: number }
+>()
 
 /** Also handed to clients as the `ttlMs` freshness hint on `tools/list`. */
 export const TOOL_CACHE_TTL_MS = 5 * 60 * 1000
 
-export async function listUpstreamTools(apiKey: string): Promise<UpstreamTool[]> {
+export async function listUpstreamTools(
+  apiKey: string
+): Promise<UpstreamTool[]> {
   const cached = toolCache.get(apiKey)
   if (cached && cached.expiresAt > Date.now()) return cached.tools
 

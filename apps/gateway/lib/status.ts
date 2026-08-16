@@ -142,7 +142,8 @@ export async function buildStatusReport(
 
   // Nothing configured yet means nothing to redact, and this is exactly when
   // the visitor needs the instructions most.
-  const nothingConfigured = config.users.length === 0 && config.workspaces.length === 0
+  const nothingConfigured =
+    config.users.length === 0 && config.workspaces.length === 0
   const detailed = options.detailed || nothingConfigured
 
   if (config.workspaces.length === 0) {
@@ -189,10 +190,7 @@ export async function buildStatusReport(
       config.workspaces
         .filter((w) => w.hasKey && w.name)
         .map((w) =>
-          probeWorkspace(
-            w.id,
-            process.env[envVarName(w.id, "LINEAR_KEY")]!
-          )
+          probeWorkspace(w.id, process.env[envVarName(w.id, "LINEAR_KEY")]!)
         )
     )
 

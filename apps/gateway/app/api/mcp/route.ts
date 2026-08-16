@@ -63,7 +63,11 @@ export async function POST(req: NextRequest) {
   // ---- Dispatch ------------------------------------------------------------
   // The status matters to the protocol, not just to HTTP: a client probing which
   // MCP revision this server speaks decides from the status plus the error body.
-  const { status, body: response } = await handleProxyRequest(user, body, req.headers)
+  const { status, body: response } = await handleProxyRequest(
+    user,
+    body,
+    req.headers
+  )
 
   // Notifications return null — acknowledged with no body
   if (response === null) {

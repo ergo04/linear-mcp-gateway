@@ -10,16 +10,21 @@ export const metadata = {
   robots: { index: false, follow: false },
 }
 
-const HEADLINE: Record<CheckLevel, { icon: string; title: string; blurb: string }> = {
+const HEADLINE: Record<
+  CheckLevel,
+  { icon: string; title: string; blurb: string }
+> = {
   ok: {
     icon: "✓",
     title: "Gateway ready",
-    blurb: "Every workspace answered. Point your MCP client at the endpoint below.",
+    blurb:
+      "Every workspace answered. Point your MCP client at the endpoint below.",
   },
   warn: {
     icon: "!",
     title: "Gateway running, with warnings",
-    blurb: "It works, but something in the configuration is probably not what you intended.",
+    blurb:
+      "It works, but something in the configuration is probably not what you intended.",
   },
   error: {
     icon: "×",
@@ -42,14 +47,25 @@ export default async function StatusPage() {
     ? authorization.slice(7).trim()
     : undefined
 
-  const report = await buildStatusReport({ detailed: authenticateToken(token) !== null })
+  const report = await buildStatusReport({
+    detailed: authenticateToken(token) !== null,
+  })
   const head = HEADLINE[report.level]
 
   return (
     <>
-      <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>Linear MCP Gateway</p>
+      <p style={{ color: "var(--muted)", margin: 0, fontSize: 13 }}>
+        Linear MCP Gateway
+      </p>
 
-      <h1 style={{ display: "flex", alignItems: "center", gap: 10, margin: "8px 0 4px" }}>
+      <h1
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          margin: "8px 0 4px",
+        }}
+      >
         <span
           aria-hidden
           style={{
@@ -87,8 +103,12 @@ export default async function StatusPage() {
             }}
           >
             <div>
-              <strong style={{ display: "block", fontWeight: 600 }}>{check.label}</strong>
-              <span style={{ color: "var(--muted)", fontSize: 14 }}>{check.detail}</span>
+              <strong style={{ display: "block", fontWeight: 600 }}>
+                {check.label}
+              </strong>
+              <span style={{ color: "var(--muted)", fontSize: 14 }}>
+                {check.detail}
+              </span>
             </div>
           </li>
         ))}
@@ -99,8 +119,8 @@ export default async function StatusPage() {
           <h2 style={{ fontSize: 16 }}>Connect a client</h2>
           <p style={{ color: "var(--muted)", fontSize: 14 }}>
             Streamable HTTP MCP endpoint — any client that can send an{" "}
-            <code>Authorization</code> header works. You need this deployment&apos;s URL and
-            the token from <code>USER_1_TOKEN</code>:
+            <code>Authorization</code> header works. You need this
+            deployment&apos;s URL and the token from <code>USER_1_TOKEN</code>:
           </p>
           <pre>{`https://<this-deployment>/api/mcp
 Authorization: Bearer <USER_1_TOKEN>`}</pre>
@@ -120,7 +140,8 @@ Authorization: Bearer <USER_1_TOKEN>`}</pre>
           <h2 style={{ fontSize: 16 }}>What the configuration looks like</h2>
           <p style={{ color: "var(--muted)", fontSize: 14 }}>
             Set these as environment variables on the deployment, then redeploy.
-            Slugs map to workspace IDs: <code>WS_ACME_*</code> → <code>acme</code>.
+            Slugs map to workspace IDs: <code>WS_ACME_*</code> →{" "}
+            <code>acme</code>.
           </p>
           <pre>{`USER_1_NAME="Your name"
 USER_1_TOKEN="<openssl rand -base64 32>"
@@ -132,13 +153,14 @@ WS_ACME_LINEAR_KEY="lin_api_..."`}</pre>
       )}
 
       <p style={{ color: "var(--muted)", fontSize: 13, marginTop: 40 }}>
-        This page reports presence and validity only — it never displays a token or an
-        API key.
+        This page reports presence and validity only — it never displays a token
+        or an API key.
         {report.redacted ? (
           <>
             {" "}
-            Names and workspace slugs are hidden because this page is public. To see which
-            item each line refers to, ask for it with a configured token:
+            Names and workspace slugs are hidden because this page is public. To
+            see which item each line refers to, ask for it with a configured
+            token:
             <br />
             <code style={{ fontSize: 12 }}>
               curl -H &quot;Authorization: Bearer &lt;USER_1_TOKEN&gt;&quot;

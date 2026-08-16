@@ -148,7 +148,9 @@ export async function listIssues(
   if (params.projectId) filter["project"] = { id: { eq: params.projectId } }
   if (params.milestoneId !== undefined)
     filter["projectMilestone"] =
-      params.milestoneId === "" ? { null: true } : { id: { eq: params.milestoneId } }
+      params.milestoneId === ""
+        ? { null: true }
+        : { id: { eq: params.milestoneId } }
   if (params.parentId) filter["parent"] = { id: { eq: params.parentId } }
 
   const { data } = await client.client.rawRequest<
@@ -191,18 +193,23 @@ export async function listIssues(
   }
 }
 
-export async function getIssue(apiKey: string, issueId: string): Promise<IssueDetail> {
+export async function getIssue(
+  apiKey: string,
+  issueId: string
+): Promise<IssueDetail> {
   const client = getClient(apiKey)
   const issue = await client.issue(issueId)
 
-  const [state, assignee, team, project, milestone, parent] = await Promise.all([
-    issue.state,
-    issue.assignee,
-    issue.team,
-    issue.project,
-    issue.projectMilestone,
-    issue.parent,
-  ])
+  const [state, assignee, team, project, milestone, parent] = await Promise.all(
+    [
+      issue.state,
+      issue.assignee,
+      issue.team,
+      issue.project,
+      issue.projectMilestone,
+      issue.parent,
+    ]
+  )
 
   return {
     id: issue.id,
@@ -285,13 +292,16 @@ export async function updateIssue(
   // Empty string clears the relation; undefined leaves it untouched
   const updatePayload: Record<string, unknown> = {}
   if (params.title !== undefined) updatePayload["title"] = params.title
-  if (params.description !== undefined) updatePayload["description"] = params.description
+  if (params.description !== undefined)
+    updatePayload["description"] = params.description
   if (params.stateId !== undefined) updatePayload["stateId"] = params.stateId
   if (params.assigneeId !== undefined)
-    updatePayload["assigneeId"] = params.assigneeId === "" ? null : params.assigneeId
+    updatePayload["assigneeId"] =
+      params.assigneeId === "" ? null : params.assigneeId
   if (params.priority !== undefined) updatePayload["priority"] = params.priority
   if (params.projectId !== undefined)
-    updatePayload["projectId"] = params.projectId === "" ? null : params.projectId
+    updatePayload["projectId"] =
+      params.projectId === "" ? null : params.projectId
   if (params.milestoneId !== undefined)
     updatePayload["projectMilestoneId"] =
       params.milestoneId === "" ? null : params.milestoneId
@@ -307,7 +317,9 @@ export async function updateIssue(
 
 /** Shared mapping for the mutation payloads, which return a full Issue entity. */
 async function summarizeIssue(
-  issue: Awaited<NonNullable<Awaited<ReturnType<LinearClient["createIssue"]>>["issue"]>>
+  issue: Awaited<
+    NonNullable<Awaited<ReturnType<LinearClient["createIssue"]>>["issue"]>
+  >
 ): Promise<IssueSummary> {
   const [state, assignee, project, milestone, parent] = await Promise.all([
     issue.state,
@@ -363,7 +375,10 @@ export interface TeamDetail extends TeamSummary {
   issueCount: number
 }
 
-export async function getTeam(apiKey: string, teamId: string): Promise<TeamDetail> {
+export async function getTeam(
+  apiKey: string,
+  teamId: string
+): Promise<TeamDetail> {
   const client = getClient(apiKey)
   const team = await client.team(teamId)
   return {
@@ -400,7 +415,10 @@ export async function listUsers(apiKey: string): Promise<UserSummary[]> {
   }))
 }
 
-export async function getUser(apiKey: string, userId: string): Promise<UserSummary> {
+export async function getUser(
+  apiKey: string,
+  userId: string
+): Promise<UserSummary> {
   const client = getClient(apiKey)
   const u = await client.user(userId)
   return {
@@ -445,7 +463,10 @@ export async function listComments(
   )
 }
 
-export async function deleteComment(apiKey: string, commentId: string): Promise<void> {
+export async function deleteComment(
+  apiKey: string,
+  commentId: string
+): Promise<void> {
   const client = getClient(apiKey)
   await client.deleteComment(commentId)
 }
@@ -589,7 +610,10 @@ export async function listProjects(
   }))
 }
 
-export async function getProject(apiKey: string, projectId: string): Promise<ProjectSummary> {
+export async function getProject(
+  apiKey: string,
+  projectId: string
+): Promise<ProjectSummary> {
   const client = getClient(apiKey)
   const p = await client.project(projectId)
   return {
@@ -742,7 +766,8 @@ export async function listMilestones(
     .map(mapMilestone)
     .sort(
       (a, b) =>
-        (a.project ?? "").localeCompare(b.project ?? "") || a.sortOrder - b.sortOrder
+        (a.project ?? "").localeCompare(b.project ?? "") ||
+        a.sortOrder - b.sortOrder
     )
 }
 
@@ -762,7 +787,8 @@ export async function getMilestone(
     { id: milestoneId }
   )
 
-  if (!data?.projectMilestone) throw new Error(`Milestone "${milestoneId}" not found`)
+  if (!data?.projectMilestone)
+    throw new Error(`Milestone "${milestoneId}" not found`)
   return mapMilestone(data.projectMilestone)
 }
 
@@ -786,7 +812,8 @@ export async function saveMilestone(
     // Empty string clears the field; undefined leaves it untouched
     const update: Record<string, unknown> = {}
     if (params.name !== undefined) update["name"] = params.name
-    if (params.description !== undefined) update["description"] = params.description
+    if (params.description !== undefined)
+      update["description"] = params.description
     if (params.targetDate !== undefined)
       update["targetDate"] = params.targetDate === "" ? null : params.targetDate
     if (params.sortOrder !== undefined) update["sortOrder"] = params.sortOrder
@@ -802,7 +829,8 @@ export async function saveMilestone(
   }
 
   if (!params.name) throw new Error("`name` is required to create a milestone")
-  if (!params.projectId) throw new Error("`projectId` is required to create a milestone")
+  if (!params.projectId)
+    throw new Error("`projectId` is required to create a milestone")
 
   const payload = await client.createProjectMilestone({
     name: params.name,
@@ -836,7 +864,10 @@ export async function deleteMilestone(
 ): Promise<DeleteMilestoneResult> {
   const client = getClient(apiKey)
   const { name } = await getMilestone(apiKey, milestoneId)
-  const affected = await listIssues(apiKey, { milestoneId, limit: MAX_PAGE_SIZE })
+  const affected = await listIssues(apiKey, {
+    milestoneId,
+    limit: MAX_PAGE_SIZE,
+  })
 
   const payload = await client.deleteProjectMilestone(milestoneId)
   if (!payload.success) throw new Error("Milestone deletion failed")
@@ -878,7 +909,9 @@ export async function assignIssuesToMilestone(
   if (!payload.success) throw new Error("Batch milestone assignment failed")
 
   return {
-    milestone: milestoneId ? (await getMilestone(apiKey, milestoneId)).name : null,
+    milestone: milestoneId
+      ? (await getMilestone(apiKey, milestoneId)).name
+      : null,
     issues: payload.issues.map((i) => ({
       id: i.id,
       identifier: i.identifier,
@@ -980,7 +1013,12 @@ export async function getDocument(
 
 export async function createDocument(
   apiKey: string,
-  params: { title: string; content?: string; projectId?: string; initiativeId?: string }
+  params: {
+    title: string
+    content?: string
+    projectId?: string
+    initiativeId?: string
+  }
 ): Promise<DocumentSummary> {
   const client = getClient(apiKey)
   const payload = await client.createDocument({
@@ -1022,7 +1060,9 @@ export interface InitiativeSummary {
   url: string
 }
 
-export async function listInitiatives(apiKey: string): Promise<InitiativeSummary[]> {
+export async function listInitiatives(
+  apiKey: string
+): Promise<InitiativeSummary[]> {
   const client = getClient(apiKey)
   const result = await client.initiatives({ first: 50 })
   return result.nodes.map((i) => ({
@@ -1234,9 +1274,13 @@ export async function linkProjectToInitiative(
   })
 
   const link = await payload.initiativeToProject
-  if (!link) throw new Error("Initiative-to-project link failed — no link returned")
+  if (!link)
+    throw new Error("Initiative-to-project link failed — no link returned")
 
-  const [initiative, project] = await Promise.all([link.initiative, link.project])
+  const [initiative, project] = await Promise.all([
+    link.initiative,
+    link.project,
+  ])
 
   return {
     id: link.id,
@@ -1337,7 +1381,10 @@ export async function saveStatusUpdate(
   }
 }
 
-export async function deleteStatusUpdate(apiKey: string, updateId: string): Promise<void> {
+export async function deleteStatusUpdate(
+  apiKey: string,
+  updateId: string
+): Promise<void> {
   const client = getClient(apiKey)
   await client.deleteProjectUpdate(updateId)
 }
@@ -1354,7 +1401,9 @@ export interface CustomerSummary {
   size: number | null
 }
 
-export async function listCustomers(apiKey: string): Promise<CustomerSummary[]> {
+export async function listCustomers(
+  apiKey: string
+): Promise<CustomerSummary[]> {
   const client = getClient(apiKey)
   const result = await client.customers({ first: 50 })
   return result.nodes.map((c) => ({
@@ -1417,7 +1466,10 @@ export async function saveCustomer(
   }
 }
 
-export async function deleteCustomer(apiKey: string, customerId: string): Promise<void> {
+export async function deleteCustomer(
+  apiKey: string,
+  customerId: string
+): Promise<void> {
   const client = getClient(apiKey)
   await client.deleteCustomer(customerId)
 }
